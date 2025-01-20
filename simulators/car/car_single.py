@@ -191,7 +191,7 @@ class CarSingle5DEnv(BaseSingleEnv):
                 done_type = "failure"
                 g_x = self.g_x_fail
         elif end_criterion == 'timeout':
-            pass
+            raise ValueError("End criterion not supported!")
         else:
             raise ValueError("End criterion not supported!")
 

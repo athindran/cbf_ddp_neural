@@ -30,7 +30,6 @@ class iLQR(BasePolicy):
         self.tol = 1e-5  # ILQR update tolerance.
         self.eps = getattr(config, "EPS", 1e-6)
         # Stepsize scheduler.
-        self.min_alpha = 1e-12
         self.alphas = 0.5**(np.arange(30))
 
     def get_action(

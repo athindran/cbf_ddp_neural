@@ -194,6 +194,7 @@ class BaseSingleEnv(BaseEnv):
         plan_history = []
         step_history = []
         value_history = []
+        safety_metric_history = []
         process_time_history = []
         solver_iters_history = []
         complete_filter_indices = []
@@ -236,34 +237,39 @@ class BaseSingleEnv(BaseEnv):
             process_time_history.append(solver_info['process_time'])
             solver_iters_history.append(solver_info['num_iters'])
             deviation_history.append(solver_info['deviation'])
+            safety_metric_history.append(self.cost.constraint.get_safety_metric(obs, action))
 
             if advanced_animate:
-                # We plot the safety plan where we enter the target set, then
-                # decelerate and stop to remain safe for infinite time for an
-                # infeasible task plan
-                reachavoid_plan = solver_info['states']
-                reachavoid_plan_ctrl = solver_info['controls']
+                if self.cost_type=="Reachability":
+                    safety_plan = solver_info['states']
+                elif self.cost_type=="Reachavoid":
+                    # We plot the safety plan where we enter the target set, then
+                    # decelerate and stop to remain safe for infinite time for an
+                    # infeasible task plan
 
-                target_margins = self.cost.get_mapped_target_margin(
-                    reachavoid_plan, reachavoid_plan_ctrl)
+                    reachavoid_plan = solver_info['states']
+                    reachavoid_plan_ctrl = solver_info['controls']
 
-                target_margins = np.array(target_margins)
+                    target_margins = self.cost.get_mapped_target_margin(
+                        reachavoid_plan, reachavoid_plan_ctrl)
 
-                is_inside_target_index = np.argwhere(
-                    target_margins >= 0).ravel()
+                    target_margins = np.array(target_margins)
 
-                if is_inside_target_index.size == 0:
-                    is_inside_target_index = 0
-                else:
-                    is_inside_target_index = is_inside_target_index[0]
+                    is_inside_target_index = np.argwhere(
+                        target_margins >= 0).ravel()
 
-                target_plan = np.array(
-                    reachavoid_plan[:, 0:is_inside_target_index + 1])
+                    if is_inside_target_index.size == 0:
+                        is_inside_target_index = 0
+                    else:
+                        is_inside_target_index = is_inside_target_index[0]
 
-                stopping_plan = self.simulate_stopping_plan(initial_state=np.array(reachavoid_plan[:, is_inside_target_index]),
-                                                            stopping_ctrl=np.array([self.agent.dyn.ctrl_space[0, 0], 0]))
+                    target_plan = np.array(
+                        reachavoid_plan[:, 0:is_inside_target_index + 1])
 
-                safety_plan = np.concatenate(
+                    stopping_plan = self.simulate_stopping_plan(initial_state=np.array(reachavoid_plan[:, is_inside_target_index]),
+                                                                stopping_ctrl=np.array([self.agent.dyn.ctrl_space[0, 0], 0]))
+
+                    safety_plan = np.concatenate(
                     (target_plan, np.array(stopping_plan).T), axis=1)
             else:
                 safety_plan = None
@@ -286,7 +292,7 @@ class BaseSingleEnv(BaseEnv):
         if rollout_episode_callback is not None:
             rollout_episode_callback(
                 self, state_history, action_history, plan_history, step_history, value_history=value_history, process_time_history=process_time_history,
-                solver_iters_history=solver_iters_history, deviation_history=deviation_history,
+                solver_iters_history=solver_iters_history, deviation_history=deviation_history, safety_metric_history=safety_metric_history,
                 barrier_filter_indices=barrier_filter_indices, complete_filter_indices=complete_filter_indices,
                 label=self.agent.policy.filter_type
             )
@@ -337,6 +343,7 @@ class BaseSingleEnv(BaseEnv):
 
         return states
 
+    # Unused currently.
     def simulate_trajectories(
         self, num_trajectories: int, T_rollout: int, end_criterion: str,
         reset_kwargs_list: Optional[Union[List[Dict], Dict]] = None,

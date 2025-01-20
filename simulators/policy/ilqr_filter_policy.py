@@ -7,6 +7,7 @@ import copy
 import numpy as np
 
 from .ilqr_reachavoid_policy import iLQRReachAvoid
+from .ilqr_reachability_policy import iLQRReachability
 from .ilqr_policy import iLQR
 from .solver_utils import barrier_filter_linear, barrier_filter_quadratic, bicycle_linear_task_policy
 from simulators.dynamics.base_dynamics import BaseDynamics
@@ -56,6 +57,13 @@ class iLQRSafetyFilter(iLQR):
             self.solver_1 = iLQRReachAvoid(
                 self.id, self.config, self.rollout_dyn_1, self.cost)
             self.solver_2 = iLQRReachAvoid(
+                self.id, self.config, self.rollout_dyn_1, self.cost)
+        elif self.config.COST_TYPE == "Reachability":
+            self.solver_0 = iLQRReachability(
+                self.id, self.config, self.rollout_dyn_0, self.cost)
+            self.solver_1 = iLQRReachability(
+                self.id, self.config, self.rollout_dyn_1, self.cost)
+            self.solver_2 = iLQRReachability(
                 self.id, self.config, self.rollout_dyn_1, self.cost)
 
     def get_action(
@@ -148,7 +156,7 @@ class iLQRSafetyFilter(iLQR):
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = 0
                 return task_ctrl, solver_info_0
-        elif(self.filter_type == "CBF"):
+        elif(self.filter_type == "CBF" or self.filter_type == "SoftCBF"):
             gamma = self.gamma
             cutoff = gamma * solver_info_0['Vopt']
 

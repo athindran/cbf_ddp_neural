@@ -25,7 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = " "
 jax.config.update('jax_platform_name', 'cpu')
 
 
-def main(config_file, plot_tag, road_boundary, is_task_ilqr):
+def main(config_file, road_boundary, is_task_ilqr):
     ## ------------------------------------- Warmup fields ------------------------------------------ ##
     config = load_config(config_file)
     config_env = config['environment']
@@ -34,6 +34,11 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
     config_solver.is_task_ilqr = is_task_ilqr
     config_cost = config['cost']
     dyn_id = config_agent.DYN
+    plot_tag = config_env.tag
+    if is_task_ilqr:
+        plot_tag += '_ilqrtask_'
+    else:
+        plot_tag += '_naivetask_'
 
     # Provide common fields to cost
     config_cost.N = config_solver.N
@@ -116,6 +121,7 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
             **kwargs):
         solver_info = plan_history[-1]
         states = np.array(state_history).T  # last one is the next state.
+        curr_state = states[-1]
         make_animation_plots(
             env,
             state_history,
@@ -166,7 +172,8 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
             "process_times": kwargs["process_time_history"],
             "barrier_indices": kwargs["barrier_filter_indices"],
             "complete_indices": kwargs["complete_filter_indices"],
-            'deviation_history': kwargs['deviation_history']}
+            'deviation_history': kwargs['deviation_history'],
+            'safety_metrics': kwargs['safety_metric_history']}
         np.save(os.path.join(fig_folder, "save_data.npy"), save_dict)
 
         solver_info = plan_history[-1]
@@ -180,7 +187,7 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
 
     end_criterion = "failure"
 
-    yaw_constraints = [None, 0.5 * np.pi, 0.4 * np.pi]
+    yaw_constraints = [None]
 
     out_folder = config_solver.OUT_FOLDER
 
@@ -188,7 +195,7 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
         out_folder = os.path.join(out_folder, "naivetask")
 
     for _, yaw_constraint in enumerate(yaw_constraints):
-        for filter_type in ['CBF', 'LR']:
+        for filter_type in ['SoftCBF', 'CBF']:
             print("Simulation starting...")
             print("Road boundary", road_boundary)
             print("Yaw constraint", yaw_constraint)
@@ -202,9 +209,7 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
                 current_out_folder = os.path.join(
                     out_folder,
                     "road_boundary=" +
-                    str(road_boundary) +
-                    ", yaw=" +
-                    str(yaw_constraint))
+                    str(road_boundary))
             current_out_folder = os.path.join(current_out_folder, filter_type)
             config_solver.OUT_FOLDER = current_out_folder
             fig_folder = os.path.join(current_out_folder, "figure")
@@ -225,20 +230,14 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
                     'log.txt'))
 
             config_current_cost = config_ilqr_cost
-            if yaw_constraint is not None:
-                config_current_cost.USE_YAW = True
-                config_current_cost.YAW_MAX = yaw_constraint
-                config_current_cost.YAW_MIN = -yaw_constraint
-            else:
-                config_current_cost.USE_YAW = False
-
+            config_current_cost.USE_YAW = False
             config_current_cost.TRACK_WIDTH_RIGHT = road_boundary
             config_current_cost.TRACK_WIDTH_LEFT = road_boundary
             env.visual_extent[2] = -road_boundary
             env.visual_extent[3] = road_boundary
             cost = BicycleReachAvoid5DMargin(
                 config_current_cost, copy.deepcopy(
-                    env.agent.dyn))
+                    env.agent.dyn), filter_type=filter_type)
             env.cost = cost
             env.agent.init_policy(
                 policy_type=policy_type,
@@ -266,10 +265,10 @@ def main(config_file, plot_tag, road_boundary, is_task_ilqr):
 
             # region: Visualizes
             gif_path = os.path.join(fig_folder, 'rollout.gif')
-            frame_skip = getattr(config_solver, "FRAME_SKIP", 1)
+            frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
             with imageio.get_writer(gif_path, mode='I') as writer:
                 for i in range(len(nominal_states) - 1):
-                    if frame_skip != 1 and (i + 1) % frame_skip == 0:
+                    if frame_skip != 1 and (i + 1) % frame_skip != 0:
                         continue
                     filename = os.path.join(
                         fig_prog_folder, str(i + 1) + ".png")
@@ -298,11 +297,6 @@ if __name__ == "__main__":
             "test_config.yaml"))
 
     parser.add_argument(
-        "-pt", "--plot_tag", help="Save final plots", type=str,
-        default=os.path.join("reachavoid")
-    )
-
-    parser.add_argument(
         "-rb", "--road_boundary", help="Choose road width", type=float,
         default=2.0
     )
@@ -317,6 +311,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(
         args.config_file,
-        args.plot_tag,
         args.road_boundary,
         (not args.naive_task))

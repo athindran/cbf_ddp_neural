@@ -18,6 +18,7 @@ class iLQRReachAvoid(iLQR):
     ) -> np.ndarray:
         status = 0
         self.tol = 1e-5
+        self.min_alpha = 1e-12
 
         if controls is None:
             controls = np.zeros((self.dim_u, self.N))
@@ -38,9 +39,9 @@ class iLQRReachAvoid(iLQR):
         )
 
         # Target cost derivatives are manually computed for more well-behaved backpropagation
-        #target_margins = self.cost.get_mapped_target_margin(states, controls)
-        target_margins, c_x_t, c_xx_t, c_u_t, c_uu_t = self.cost.get_mapped_target_margin_with_derivative(
-            states, controls)
+        target_margins = self.cost.get_mapped_target_margin(states, controls)
+        # target_margins, c_x_t, c_xx_t, c_u_t, c_uu_t = self.cost.get_mapped_target_margin_with_derivative(
+        #     states, controls)
 
         is_inside_target = (target_margins[0] > 0)
         ctrl_costs = self.cost.ctrl_cost.get_mapped_margin(states, controls)
@@ -58,9 +59,9 @@ class iLQRReachAvoid(iLQR):
                 states, controls
             )
 
-            # c_x_t, c_u_t, c_xx_t, c_uu_t, c_ux_t = self.cost.get_derivatives_target(
-            #    states, controls
-            # )
+            c_x_t, c_u_t, c_xx_t, c_uu_t, c_ux_t = self.cost.get_derivatives_target(
+               states, controls
+            )
 
             fx, fu = self.dyn.get_jacobian(states[:, :-1], controls[:, :-1])
             V_x, V_xx, constant_term_loop, k_open_loop, K_closed_loop, _, _ = self.backward_pass(
@@ -70,15 +71,15 @@ class iLQRReachAvoid(iLQR):
             )
 
             # Choose the best alpha scaling using appropriate line search methods
-            #alpha_chosen = self.baseline_line_search( states, controls, K_closed_loop, k_open_loop, J)
+            alpha_chosen = self.baseline_line_search( states, controls, K_closed_loop, k_open_loop, J)
             # alpha_chosen = self.armijo_line_search( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical,
             #                                       J=J, c_u=c_u)
-            alpha_chosen = self.trust_region_search_conservative(states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical,
-                                                                 J=J, c_x=c_x, c_xx=c_xx)
+            # alpha_chosen = self.trust_region_search_conservative(states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical,
+            #                                                      J=J, c_x=c_x, c_xx=c_xx)
 
-            #states, controls, J_new, critical, failure_margins, target_margins, reachavoid_margin, _, _, _, _ = self.forward_pass(states, controls, K_closed_loop, k_open_loop, alpha_chosen)
-            states, controls, J_new, critical, failure_margins, target_margins, reachavoid_margin, c_x_t, c_xx_t, c_u_t, c_uu_t = self.forward_pass(
-                states, controls, K_closed_loop, k_open_loop, alpha_chosen)
+            states, controls, J_new, critical, failure_margins, target_margins, reachavoid_margin = self.forward_pass(states, controls, K_closed_loop, k_open_loop, alpha_chosen)
+            # states, controls, J_new, critical, failure_margins, target_margins, reachavoid_margin, c_x_t, c_xx_t, c_u_t, c_uu_t = self.forward_pass(
+            #     states, controls, K_closed_loop, k_open_loop, alpha_chosen)
             if (np.abs((J - J_new) / J) < self.tol):  # Small improvement.
                 status = 1
                 if J_new > 0:
@@ -110,7 +111,7 @@ class iLQRReachAvoid(iLQR):
 
     @partial(jax.jit, static_argnames='self')
     def baseline_line_search(self, states, controls,
-                             K_closed_loop, k_open_loop, J, beta=0.9):
+                             K_closed_loop, k_open_loop, J, beta=0.7):
         alpha = 1.0
         J_new = -jnp.inf
 
@@ -322,9 +323,9 @@ class iLQRReachAvoid(iLQR):
         # J = self.cost.get_traj_cost(X, U, closest_pt, slope, theta)
         #! hacky
         failure_margins = self.cost.constraint.get_mapped_margin(X, U)
-        #target_margins = self.cost.get_mapped_target_margin(X, U)
-        target_margins, c_x_t, c_xx_t, c_u_t, c_uu_t = self.cost.get_mapped_target_margin_with_derivative(
-            X, U)
+        target_margins = self.cost.get_mapped_target_margin(X, U)
+        # target_margins, c_x_t, c_xx_t, c_u_t, c_uu_t = self.cost.get_mapped_target_margin_with_derivative(
+        #     X, U)
 
         ctrl_costs = self.cost.ctrl_cost.get_mapped_margin(X, U)
 
@@ -339,7 +340,7 @@ class iLQRReachAvoid(iLQR):
         #err, future_cost = checked_margin(failure_margins, target_margins, reachavoid_margin)
         # err.throw()
 
-        return X, U, J, critical, failure_margins, target_margins, reachavoid_margin, c_x_t, c_xx_t, c_u_t, c_uu_t
+        return X, U, J, critical, failure_margins, target_margins, reachavoid_margin
 
     """
   def brute_force_critical_cost(self, state_costs, target_costs):
