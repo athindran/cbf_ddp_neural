@@ -538,7 +538,7 @@ class Bicycle5DSoftConstraintMargin(BaseMargin):
         self.w_omega = config.W_OMEGA
         self.track_width_right = config.TRACK_WIDTH_RIGHT
         self.track_width_left = config.TRACK_WIDTH_LEFT
-        self.kappa = 2.5
+        self.kappa = config.SMOOTHING_TEMP
 
         self.use_yaw = getattr(config, 'USE_YAW', False)
         self.use_vel = getattr(config, 'USE_VEL', False)

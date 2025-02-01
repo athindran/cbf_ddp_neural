@@ -24,7 +24,7 @@ environment:
     - [-0.4, 0.4]
     - [0.5, 1.5]
     - [-0.3, 0.3]
-  tag: 'mul_obs_config1_bic4d'
+  tag: 'mul_obs_reachability_config1_bic4d'
 
 cost:
   # Task policy tuned weights
@@ -55,6 +55,7 @@ cost:
   W_OMEGA: 0.05
   YAW_MIN: -1.57
   YAW_MAX: 1.57
+  SMOOTHING_TEMP: 1.5
 
 agent:
   AGENT_ID: ego
