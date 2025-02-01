@@ -224,15 +224,16 @@ class CarSingle5DEnv(BaseSingleEnv):
         low[1] = y_min
         low[2] = 0
         low[3] = -np.pi
-        low[4] = -1
-        #low[5] = -1
+
         high = np.zeros((self.state_dim,))
         high[0] = x_max
         high[1] = y_max
         high[2] = 1
         high[3] = np.pi
-        high[4] = 1
-        #high[5] = -1
+
+        if self.state_dim == 5:
+            low[4] = -1
+            high[4] = 1
 
         self.observation_space = spaces.Box(
             low=np.float32(low), high=np.float32(high)

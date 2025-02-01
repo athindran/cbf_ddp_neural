@@ -4,6 +4,7 @@ import numpy as np
 
 # Dynamics.
 from .dynamics.bicycle5d import Bicycle5D
+from .dynamics.bicycle4d import Bicycle4D
 
 from .costs.base_margin import BaseMargin
 
@@ -34,6 +35,8 @@ class Agent:
     def __init__(self, config, action_space: np.ndarray, env=None) -> None:
         if config.DYN == "Bicycle5D":
             self.dyn = Bicycle5D(config, action_space)
+        elif config.DYN == "Bicycle4D":
+            self.dyn = Bicycle4D(config, action_space)
         else:
             raise ValueError("Dynamics type not supported!")
 

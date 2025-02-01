@@ -10,7 +10,7 @@ from jax import random
 from .base_dynamics import BaseDynamics
 
 
-class Bicycle5D(BaseDynamics):
+class Bicycle4D(BaseDynamics):
 
     def __init__(self, config: Any, action_space: np.ndarray) -> None:
         """
@@ -21,7 +21,7 @@ class Bicycle5D(BaseDynamics):
             action_space (np.ndarray): action space.
         """
         super().__init__(config, action_space)
-        self.dim_x = 5  # [x, y, v, psi, delta].
+        self.dim_x = 4  # [x, y, v, psi, delta].
 
         # load parameters
         self.wheelbase: float = config.WHEELBASE  # vehicle chassis length
@@ -59,8 +59,7 @@ class Bicycle5D(BaseDynamics):
         deriv = deriv.at[0].set(state[2] * jnp.cos(state[3]))
         deriv = deriv.at[1].set(state[2] * jnp.sin(state[3]))
         deriv = deriv.at[2].set(control[0])
-        deriv = deriv.at[3].set(state[2] * jnp.tan(state[4]) / self.wheelbase)
-        deriv = deriv.at[4].set(control[1])
+        deriv = deriv.at[3].set(state[2] * jnp.tan(control[1]) / self.wheelbase)
         return deriv
 
     @partial(jax.jit, static_argnames='self')
@@ -72,8 +71,7 @@ class Bicycle5D(BaseDynamics):
             x_k+1 = x_k + v_k cos(psi_k) dt
             y_k+1 = y_k + v_k sin(psi_k) dt
             v_k+1 = v_k + u0_k dt
-            psi_k+1 = psi_k + v_k tan(delta_k) / L dt
-            delta_k+1 = delta_k + u1_k dt
+            psi_k+1 = psi_k + v_k tan(u1_k) / L dt
         Args:
             state (DeviceArray): [x, y, v, psi, delta].
             control (DeviceArray): [accel, omega].
@@ -96,25 +94,16 @@ class Bicycle5D(BaseDynamics):
             jnp.clip(state_nxt[2], self.v_min, self.v_max)
         )
 
-        state_nxt = state_nxt.at[4].set(
-            jnp.clip(state_nxt[4], self.delta_min, self.delta_max)
-        )
-
         return state_nxt
 
     @partial(jax.jit, static_argnames='self')
     def get_jacobian_fx(
         self, obs: DeviceArray, control: DeviceArray
     ) -> Tuple[DeviceArray, DeviceArray]:
-        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -obs[2] * jnp.sin(obs[3]), 0],
-                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3]), 0],
-                        [0, 0, 0, 0, 0],
-                        [0,
-                         0,
-                         jnp.tan(obs[4]) / self.wheelbase,
-                         0,
-                         obs[2] / (1e-6 + self.wheelbase * jnp.cos(obs[4])**2)],
-                        [0, 0, 0, 0, 0]])
+        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -obs[2] * jnp.sin(obs[3])],
+                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3])],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0]])
 
         Ad = jnp.eye(self.dim_x) + Ac * self.dt + \
             0.5 * Ac @ Ac * self.dt * self.dt
@@ -125,21 +114,10 @@ class Bicycle5D(BaseDynamics):
     def get_jacobian_fu(
         self, obs: DeviceArray, control: DeviceArray
     ) -> DeviceArray:
-        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -obs[2] * jnp.sin(obs[3]), 0],
-                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3]), 0],
-                        [0, 0, 0, 0, 0],
-                        [0,
-                         0,
-                         jnp.tan(obs[4]) / self.wheelbase,
-                         0,
-                         obs[2] / (1e-6 + self.wheelbase * jnp.cos(obs[4])**2)],
-                        [0, 0, 0, 0, 0]])
-
         Bc = jnp.array([[0, 0],
                        [0, 0],
                        [1, 0],
-                       [0, 0],
-                       [0, 1]])
+                       [0, obs[2] / (1e-6 + self.wheelbase * jnp.cos(control[1])**2)]])
 
         Bd = self.dt * Bc
 
@@ -159,21 +137,15 @@ class Bicycle5D(BaseDynamics):
     @partial(jax.jit, static_argnames='self')
     def get_jacobian_fx_fu(self, obs: DeviceArray,
                            control: DeviceArray) -> Tuple:
-        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -obs[2] * jnp.sin(obs[3]), 0],
-                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3]), 0],
-                        [0, 0, 0, 0, 0],
-                        [0,
-                         0,
-                         jnp.tan(obs[4]) / self.wheelbase,
-                         0,
-                         obs[2] / (1e-6 + self.wheelbase * jnp.cos(obs[4])**2)],
-                        [0, 0, 0, 0, 0]])
+        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -1 * obs[2] * jnp.sin(obs[3])],
+                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3])],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0]])
 
         Bc = jnp.array([[0, 0],
                        [0, 0],
                        [1, 0],
-                       [0, 0],
-                       [0, 1]])
+                       [0, obs[2] / (1e-6 + self.wheelbase * jnp.cos(control[1])**2)]])
 
         Ad = jnp.eye(self.dim_x) + Ac * self.dt + \
             0.5 * Ac @ Ac * self.dt * self.dt
