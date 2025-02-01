@@ -61,7 +61,7 @@ def plot_run_summary(dyn_id, env, state_history, action_history, config_solver, 
     
     action_space = np.array(config_agent.ACTION_RANGE, dtype=np.float32)
 
-    if dyn_id=="Bicycle5D":
+    if dyn_id=="Bicycle5D" or dyn_id=="Bicycle4D":
       fig, axes = plt.subplots(
         1, 3, figsize=(16.0, 3.4)
       )
@@ -98,11 +98,11 @@ def plot_run_summary(dyn_id, env, state_history, action_history, config_solver, 
     ax.set_ylabel("Velocity")
     ax.grid()
     
-    ax = axes[1]
-    ax.plot(states[4, :])
-    ax.set_xlabel("Timestep")
-    ax.set_ylabel("Delta")
-    ax.grid()
+    # ax = axes[1]
+    # ax.plot(states[4, :])
+    # ax.set_xlabel("Timestep")
+    # ax.set_ylabel("Delta")
+    # ax.grid()
     fig.savefig(os.path.join(fig_folder, "auxiliary_velocity.png"), dpi=200)
 
     fig = plt.figure(figsize=(7, 4))
