@@ -202,7 +202,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     colors['SoftCBF'] = 'k'
     styles = ['solid', 'dashed', 'dotted']
 
-    for sh in ['CBF', 'SoftCBF']:
+    for sh in ['SoftCBF']:
         for rb in road_bounds:
             for yindx, yc in enumerate(yaw_consts):
                 if yc is not None:
@@ -505,6 +505,45 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
             bbox_inches='tight', transparent=hide_label
         )
 
+    fig_st = plt.figure(figsize=(3.2, 2.5))
+    ax_st = plt.gca()
+    if 'reachability' in tag:
+        max_value = 0.1
+    else:
+        max_value = 1.0
+
+    for idx, process_times_data in enumerate(plot_times_list):
+        x_times = dt*np.arange(process_times_data.size)
+        ax_st.plot(x_times, process_times_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
+                            alpha = 1.0, linewidth=1.5, linestyle='solid')
+        nsteps = process_times_data.size
+        fillarray = np.zeros(nsteps)
+        fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+        ax_st.fill_between(x_times, 0.0, max_value, 
+                                    where=fillarray, color=colorlist[int(idx)], alpha=0.3)
+
+    ax_st.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
+    # ax_st.set_yticks(ticks=[0, max_value], 
+    #                     labels=[0, max_value], 
+    #                     fontsize=legend_fontsize)
+    ax_st.set_ylim([0.0, max_value])
+    #ax_st.yaxis.set_label_coords(-0.04, 0.5)
+    ax_st.xaxis.set_label_coords(0.5, -0.04)
+    ax_st.set_xlabel('Time (s)', 
+                        fontsize=legend_fontsize)
+    ax_st.set_ylabel('Safety filter process time (s)', 
+                        fontsize=legend_fontsize)
+    ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
+                           ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
+        
+    fig_st.savefig(
+            plot_folder + tag + str(hide_label) + "_jax_control_cycle_times.pdf", dpi=200, 
+            bbox_inches='tight', transparent=hide_label
+        )
+    fig_st.savefig(
+            plot_folder + tag + str(hide_label) + "_jax_control_cycle_times.png", dpi=200, 
+            bbox_inches='tight', transparent=hide_label
+        )
 
     print("Reporting stats")
     for idx, controls_data in enumerate(plot_actions_list):
