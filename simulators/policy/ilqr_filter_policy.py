@@ -141,9 +141,9 @@ class iLQRSafetyFilter(iLQR):
                 #print("Filtered control safe", control_0)
                 if solver_info_0['is_inside_target']:
                     # Render the target set controlled invariant
-                    return stopping_ctrl, solver_info_0
+                    return stopping_ctrl + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
                 else:
-                    return control_0, solver_info_0
+                    return control_0 + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
             else:
                 solver_info_0['filter_steps'] = self.filter_steps
                 solver_info_0['process_time'] = time.time() - start_time
@@ -155,7 +155,7 @@ class iLQRSafetyFilter(iLQR):
                     solver_info_1['states'])
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = 0
-                return task_ctrl, solver_info_0
+                return task_ctrl + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
         elif(self.filter_type == "CBF" or self.filter_type == "SoftCBF"):
             gamma = self.gamma
             cutoff = gamma * solver_info_0['Vopt']
@@ -261,7 +261,7 @@ class iLQRSafetyFilter(iLQR):
                 solver_info_0['deviation'] = np.linalg.norm(
                     control_cbf_cand - task_ctrl, ord=1)
                 solver_info_0['qcqp_initialize'] = control_cbf_cand - task_ctrl
-                return control_cbf_cand.ravel(), solver_info_0
+                return control_cbf_cand.ravel() + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
 
         self.filter_steps += 1
         # Safe policy
