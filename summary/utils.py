@@ -202,7 +202,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     colors['SoftCBF'] = 'k'
     styles = ['solid', 'dashed', 'dotted']
 
-    for sh in ['SoftCBF']:
+    for sh in ['SoftCBF', 'CBF']:
         for rb in road_bounds:
             for yindx, yc in enumerate(yaw_consts):
                 if yc is not None:

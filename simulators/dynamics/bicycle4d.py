@@ -90,9 +90,9 @@ class Bicycle4D(BaseDynamics):
         k4 = self.disc_deriv(state + k3 * dt, ctrl_clip)
 
         state_nxt = state + (k1 + 2 * k2 + 2 * k3 + k4) * dt / 6
-        state_nxt = state_nxt.at[2].set(
-            jnp.clip(state_nxt[2], self.v_min, self.v_max)
-        )
+        # state_nxt = state_nxt.at[2].set(
+        #     jnp.clip(state_nxt[2], self.v_min, self.v_max)
+        # )
 
         return state_nxt
 

@@ -195,7 +195,7 @@ def main(config_file, road_boundary, is_task_ilqr):
         out_folder = os.path.join(out_folder, "naivetask")
 
     for _, yaw_constraint in enumerate(yaw_constraints):
-        for filter_type in ['SoftCBF']:
+        for filter_type in ['SoftCBF', 'CBF']:
             print("Simulation starting...")
             print("Road boundary", road_boundary)
             print("Yaw constraint", yaw_constraint)
