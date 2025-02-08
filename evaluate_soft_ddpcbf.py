@@ -279,7 +279,7 @@ def main(config_file, road_boundary, is_task_ilqr):
 
     make_yaw_report(
         out_folder,
-        plot_folder='./plots_paper/',
+        plot_folder='./plots_summary/',
         tag=plot_tag,
         road_boundary=road_boundary,
         dt=config_agent.DT)

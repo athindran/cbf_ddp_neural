@@ -10,8 +10,8 @@ import os
 def find_jerk(controls, time_delta):
     x_jerk = np.abs(controls[1:, 0] - controls[0:-1, 0])
     y_jerk = np.abs(controls[1:, 1] - controls[0:-1, 1])
-    #x_jerk = np.divide(x_jerk, time_delta)
-    #y_jerk = np.divide(y_jerk, time_delta)
+    x_jerk = np.divide(x_jerk, time_delta)
+    y_jerk = np.divide(y_jerk, time_delta)
     mean_x_jerk = np.mean( x_jerk )
     mean_y_jerk = np.mean( y_jerk )
     std_x_jerk = np.std( x_jerk )
@@ -185,7 +185,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
 
     hide_label = False
 
-    legend_fontsize = 6
+    legend_fontsize = 9
     road_bounds = [road_boundary]
     yaw_consts = [None]
     label_yc = [None]
@@ -283,15 +283,14 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
         c_obs = 'k'
         env = CarSingle5DEnv(config_env, config_agent, config_cost)
 
-        fig, axes = plt.subplots(
-            1, 1, figsize=(4.9, 2.1)
-        )
-
-        for ax in [axes]:
-            # track, obstacles, footprint
-            env.render_obs(ax=ax, c=c_obs)
-            ax.axis(env.visual_extent)
-            ax.set_aspect('equal')
+        fig = plt.figure(layout='constrained', figsize=(8, 5.5))
+        subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
+        subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
+        ax = subfigs_col1[0].subplots(1, 1)
+        # track, obstacles, footprint
+        env.render_obs(ax=ax, c=c_obs)
+        ax.axis(env.visual_extent)
+        ax.set_aspect('equal')
 
         lgd_c = True
         lgd_b = True
@@ -359,16 +358,16 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
             ax.xaxis.set_label_coords(0.5, -0.04)
 
 
-        fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_trajectories.pdf", dpi=200,
-            bbox_inches='tight', transparent=hide_label
-        )
-        fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_trajectories.png", dpi=200,
-            bbox_inches='tight', transparent=hide_label
-        )
+        # fig.savefig(
+        #     plot_folder + tag + str(hide_label) + "_jax_trajectories.pdf", dpi=200,
+        #     bbox_inches='tight', transparent=hide_label
+        # )
+        # fig.savefig(
+        #     plot_folder + tag + str(hide_label) + "_jax_trajectories.png", dpi=200,
+        #     bbox_inches='tight', transparent=hide_label
+        # )
 
-        fig, axes = plt.subplots(2, 1, figsize=(5.2, 2.8))
+        axes = subfigs_col1[1].subplots(2, 1)
         
         maxsteps = 0
         styles = ['solid', 'solid', 'solid']
@@ -396,8 +395,8 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
             axes[0].set_yticks(ticks=[action_space[0, 0], action_space[0, 1]], 
                                labels=[action_space[0, 0], action_space[0, 1]], 
                                fontsize=legend_fontsize)
-            axes[0].legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-                           ncol=3, bbox_to_anchor=(-0.05, 1.2), fancybox=False, shadow=False)
+            # axes[0].legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
+            #                ncol=3, bbox_to_anchor=(-0.05, 1.2), fancybox=False, shadow=False)
             axes[0].yaxis.set_label_coords(-0.04, 0.5)
 
             if hide_label:
@@ -420,17 +419,17 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                 axes[1].set_xticklabels([])
                 axes[1].set_yticklabels([])
 
-        fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_controls.pdf", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
-        fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_controls.png", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
+        # fig.savefig(
+        #     plot_folder + tag + str(hide_label) + "_jax_controls.pdf", dpi=200, 
+        #     bbox_inches='tight', transparent=hide_label
+        # )
+        # fig.savefig(
+        #     plot_folder + tag + str(hide_label) + "_jax_controls.png", dpi=200, 
+        #     bbox_inches='tight', transparent=hide_label
+        # )
 
-    fig_v = plt.figure(figsize=(3.2, 2.5))
-    ax_v = plt.gca()
+    subfigs_col2 = subfigs[1].subfigures(2, 1)
+    ax_v = subfigs_col2[0].subplots(1, 1)
     max_value = 1.8
     for idx, values_data in enumerate(plot_values_list):
         if showcontrollist[idx]:
@@ -455,58 +454,58 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                         fontsize=legend_fontsize)
     ax_v.set_ylabel('Value function', 
                         fontsize=legend_fontsize)
-    ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-                           ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
+    # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
+    #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
-    fig_v.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_values.pdf", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
-    fig_v.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_values.png", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
+    # fig_v.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jax_values.pdf", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
+    # fig_v.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jax_values.png", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
 
-    fig_sf = plt.figure(figsize=(3.2, 2.5))
-    ax_sf = plt.gca()
-    max_value = 1.8
-    for idx, safety_metrics_data in enumerate(plot_safety_metrics_list):
-        if showcontrollist[idx]:
-            x_times = dt*np.arange(safety_metrics_data.size)
-            ax_sf.plot(x_times, safety_metrics_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
-                             alpha = 1.0, linewidth=1.5, linestyle='solid')
-            nsteps = safety_metrics_data.size
-            fillarray = np.zeros(nsteps)
-            fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
-            ax_sf.fill_between(x_times, 0.0, max_value, 
-                                     where=fillarray, color=colorlist[int(idx)], alpha=0.3)
-            ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
+    # fig_sf = plt.figure(figsize=(3.2, 2.5))
+    # ax_sf = plt.gca()
+    # max_value = 1.8
+    # for idx, safety_metrics_data in enumerate(plot_safety_metrics_list):
+    #     if showcontrollist[idx]:
+    #         x_times = dt*np.arange(safety_metrics_data.size)
+    #         ax_sf.plot(x_times, safety_metrics_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
+    #                          alpha = 1.0, linewidth=1.5, linestyle='solid')
+    #         nsteps = safety_metrics_data.size
+    #         fillarray = np.zeros(nsteps)
+    #         fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+    #         ax_sf.fill_between(x_times, 0.0, max_value, 
+    #                                  where=fillarray, color=colorlist[int(idx)], alpha=0.3)
+    #         ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
 
-    ax_sf.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
-    ax_sf.set_yticks(ticks=[0, max_value], 
-                        labels=[0, max_value], 
-                        fontsize=legend_fontsize)
-    ax_sf.set_ylim([0.0, max_value])
-    ax_sf.yaxis.set_label_coords(-0.04, 0.5)
-    ax_sf.xaxis.set_label_coords(0.5, -0.04)
-    ax_sf.set_xlabel('Time (s)', 
-                        fontsize=legend_fontsize)
-    ax_sf.set_ylabel('Safety metric function', 
-                        fontsize=legend_fontsize)
-    ax_sf.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-                           ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
+    # ax_sf.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
+    # ax_sf.set_yticks(ticks=[0, max_value], 
+    #                     labels=[0, max_value], 
+    #                     fontsize=legend_fontsize)
+    # ax_sf.set_ylim([0.0, max_value])
+    # ax_sf.yaxis.set_label_coords(-0.04, 0.5)
+    # ax_sf.xaxis.set_label_coords(0.5, -0.04)
+    # ax_sf.set_xlabel('Time (s)', 
+    #                     fontsize=legend_fontsize)
+    # ax_sf.set_ylabel('Safety metric function', 
+    #                     fontsize=legend_fontsize)
+    # ax_sf.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
+    #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
-    fig_sf.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_safety_metrics.pdf", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
-    fig_sf.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_safety_metrics.png", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
+    # fig_sf.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jax_safety_metrics.pdf", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
+    # fig_sf.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jax_safety_metrics.png", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
 
-    fig_st = plt.figure(figsize=(3.2, 2.5))
-    ax_st = plt.gca()
+    ax_st = subfigs_col2[1].subplots(1, 1)
+
     if 'reachability' in tag:
         max_value = 0.1
     else:
@@ -523,25 +522,25 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                                     where=fillarray, color=colorlist[int(idx)], alpha=0.3)
 
     ax_st.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
-    # ax_st.set_yticks(ticks=[0, max_value], 
-    #                     labels=[0, max_value], 
-    #                     fontsize=legend_fontsize)
+    ax_st.set_yticks(ticks=[0, max_value], 
+                        labels=[0, max_value], 
+                        fontsize=legend_fontsize)
     ax_st.set_ylim([0.0, max_value])
-    #ax_st.yaxis.set_label_coords(-0.04, 0.5)
+    ax_st.yaxis.set_label_coords(-0.04, 0.5)
     ax_st.xaxis.set_label_coords(0.5, -0.04)
     ax_st.set_xlabel('Time (s)', 
                         fontsize=legend_fontsize)
     ax_st.set_ylabel('Safety filter process time (s)', 
                         fontsize=legend_fontsize)
-    ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-                           ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
+    # ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
+    #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
-    fig_st.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_control_cycle_times.pdf", dpi=200, 
+    fig.savefig(
+            plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
             bbox_inches='tight', transparent=hide_label
         )
-    fig_st.savefig(
-            plot_folder + tag + str(hide_label) + "_jax_control_cycle_times.png", dpi=200, 
+    fig.savefig(
+            plot_folder + tag + str(hide_label) + "_jax.png", dpi=200, 
             bbox_inches='tight', transparent=hide_label
         )
 
