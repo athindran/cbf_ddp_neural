@@ -182,7 +182,7 @@ class iLQRSafetyFilter(iLQR):
             scaled_c = constraint_violation
 
             # Scaling parameter
-            kappa = 1.2
+            scaling_factor = 0.8
 
             # Exit loop once CBF constraint satisfied or maximum iterations
             # violated
@@ -241,7 +241,7 @@ class iLQRSafetyFilter(iLQR):
 
                 # CBF constraint violation
                 constraint_violation = solver_info_1['Vopt'] - cutoff
-                scaled_c = kappa * constraint_violation
+                scaled_c = scaling_factor * constraint_violation
 
             if solver_info_1['Vopt'] > 0:
                 if num_iters > 0:
