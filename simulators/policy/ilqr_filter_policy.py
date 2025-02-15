@@ -22,7 +22,13 @@ class iLQRSafetyFilter(iLQR):
 
         self.filter_type = config.FILTER_TYPE
         self.constraint_type = config.CBF_TYPE
-        self.gamma = config.BARRIER_GAMMA
+        if self.filter_type == 'CBF':
+            self.gamma = config.CBF_GAMMA
+        elif self.filter_type == 'SoftCBF':
+            self.gamma = config.SOFT_CBF_GAMMA
+        else:
+            self.gamma = None
+
         self.lr_threshold = config.LR_THRESHOLD
 
         self.filter_steps = 0

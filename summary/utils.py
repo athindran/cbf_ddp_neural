@@ -202,7 +202,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     colors['SoftCBF'] = 'k'
     styles = ['solid', 'dashed', 'dotted']
 
-    for sh in ['SoftCBF', 'CBF']:
+    for sh in ['SoftCBF']:
         for rb in road_bounds:
             for yindx, yc in enumerate(yaw_consts):
                 if yc is not None:
@@ -273,9 +273,12 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
         action_space = np.array(config_agent.ACTION_RANGE, dtype=np.float32)
         max_iters = config_solver.MAX_ITER_RECEDING
         
-        if config_solver.FILTER_TYPE=='CBF' or config_solver.FILTER_TYPE=='SoftCBF':
+        if config_solver.FILTER_TYPE=='CBF' :
             filter_type.append(1)
-            filter_params.append(config_solver.BARRIER_GAMMA)
+            filter_params.append(config_solver.CBF_GAMMA)
+        elif config_solver.FILTER_TYPE=='SoftCBF':
+            filter_type.append(1)
+            filter_params.append(config_solver.SOFT_CBF_GAMMA)            
         elif config_solver.FILTER_TYPE=='LR':
             filter_type.append(2)
             filter_params.append(config_solver.SHIELD_THRESHOLD) 
