@@ -608,6 +608,14 @@ class Bicycle5DSoftConstraintMargin(BaseMargin):
                 state, ctrl
             ))
 
+        if self.use_yaw:
+            cost += jnp.exp(-1 * self.kappa * self.yaw_max_cost.get_stage_margin(
+                state, ctrl
+            ))
+            cost += jnp.exp(-1 * self.kappa * self.yaw_min_cost.get_stage_margin(
+                state, ctrl
+            ))
+
         cost = -jnp.log(cost)/self.kappa
 
         return cost
@@ -639,6 +647,14 @@ class Bicycle5DSoftConstraintMargin(BaseMargin):
                 ))
 
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.road_position_max_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+            
+            if self.use_yaw:
+                curr_target_cost += jnp.exp(-1 * self.kappa * self.yaw_max_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+                curr_target_cost += jnp.exp(-1 * self.kappa * self.yaw_min_cost.get_stage_margin(
                     current_state, stopping_ctrl
                 ))
 
@@ -689,6 +705,24 @@ class Bicycle5DSoftConstraintMargin(BaseMargin):
             for _obs_constraint in self.obs_constraint:
                 _obs_constraint: BaseMargin
                 target_cost = jnp.minimum(target_cost, _obs_constraint.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+            if self.use_road:
+                target_cost = jnp.minimum(target_cost, self.road_position_min_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+                target_cost = jnp.minimum(target_cost, self.road_position_max_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+            if self.use_yaw:
+                target_cost = jnp.minimum(target_cost, self.yaw_min_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+                target_cost = jnp.minimum(target_cost, self.yaw_max_cost.get_stage_margin(
                     current_state, stopping_ctrl
                 ))
 
@@ -765,7 +799,7 @@ class BicycleReachAvoid5DMargin(BaseMargin):
     def __init__(self, config, plan_dyn, filter_type='CBF'):
         super().__init__()
         # Removing the square
-        if filter_type == 'SoftCBF':
+        if filter_type == 'SoftCBF' or filter_type=='SoftLR':
             self.constraint = Bicycle5DSoftConstraintMargin(config, plan_dyn)
         else:
             self.constraint = Bicycle5DConstraintMargin(config, plan_dyn)

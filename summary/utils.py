@@ -135,6 +135,9 @@ def make_animation_plots(env, state_history, solver_info, safety_plan, config_so
     elif config_solver.FILTER_TYPE == "LR":
         c_trace = 'r'
         ax.set_title('LR-DDP')
+    elif config_solver.FILTER_TYPE == "SoftLR":
+        c_trace = 'r'
+        ax.set_title('SoftLR-DDP')
     elif config_solver.FILTER_TYPE == "CBF":
         c_trace = 'b'
         ax.set_title('CBF-DDP')
@@ -176,7 +179,7 @@ def make_animation_plots(env, state_history, solver_info, safety_plan, config_so
     plt.close('all')
 
 def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./plots_paper/", 
-                    tag="reachavoid", road_boundary=1.2, dt=0.01):
+                    tag="reachavoid", road_boundary=1.2, dt=0.01, filters=['SoftCBF']):
     if not os.path.exists(plot_folder):
         os.makedirs(plot_folder)
 
@@ -198,11 +201,12 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     showlist = []
     showcontrollist = []
     colors = {}
-    colors['CBF'] = 'b'
-    colors['SoftCBF'] = 'k'
+    colors['SoftLR'] = 'k'
+    colors['CBF'] = 'r'
+    colors['SoftCBF'] = 'b'
     styles = ['solid', 'dashed', 'dotted']
 
-    for sh in ['SoftCBF']:
+    for sh in filters:
         for rb in road_bounds:
             for yindx, yc in enumerate(yaw_consts):
                 if yc is not None:
@@ -216,7 +220,14 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                 else:
                     suffixlist.append(os.path.join("road_boundary=" + str(rb), sh))
                     if not hide_label:
-                        labellist.append(sh+"-DDP")
+                        if sh=='SoftCBF':
+                            labellist.append("CBFDDP-SM")
+                        elif sh=='CBF':
+                            labellist.append("CBFDDP-HM")
+                        elif sh=='SoftLR':
+                            labellist.append("LRDDP-SM")
+                        else:
+                            labellist.append(sh + "DDP")
                     else:
                         labellist.append("                          ")
                 colorlist.append(colors[sh])
@@ -230,7 +241,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
             
                 if sh=='LR' and yc==0.4*np.pi:
                     showcontrollist.append(True)
-                elif sh=='CBF' or sh=='SoftCBF':
+                elif sh=='CBF' or sh=='SoftCBF' or sh=='LR' or sh=='SoftLR':
                     showcontrollist.append(True)
                 else:
                     showcontrollist.append(False)
@@ -243,10 +254,13 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     plot_deviations_list = []
     plot_states_complete_filter_list = []
     plot_states_barrier_filter_list = []
+    plot_safe_opt_list = []
+    plot_task_ctrl_list = []
 
     filter_type = []
     filter_params = []
     for suffix in suffixlist:
+        print(prefix, suffix)
         plot_data = np.load(prefix+"/"+suffix+"/figure/save_data.npy", allow_pickle=True)
         plot_data = plot_data.ravel()[0]
         plot_states_complete_filter_list.append( np.array(plot_data['complete_indices'] ) )
@@ -257,6 +271,8 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
         plot_safety_metrics_list.append( np.array(plot_data['safety_metrics']) )
         plot_times_list.append( np.array(plot_data['process_times']) )
         plot_deviations_list.append( np.array(plot_data['deviation_history']) )
+        plot_safe_opt_list.append( np.array(plot_data['safe_opt_history']) )
+        plot_task_ctrl_list.append( np.array(plot_data['task_ctrl_history']) )
 
         config_file = prefix+"/"+suffix+"/config.yaml"
         config = load_config( config_file )
@@ -279,14 +295,14 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
         elif config_solver.FILTER_TYPE=='SoftCBF':
             filter_type.append(1)
             filter_params.append(config_solver.SOFT_CBF_GAMMA)            
-        elif config_solver.FILTER_TYPE=='LR':
+        elif config_solver.FILTER_TYPE=='LR' or config_solver.FILTER_TYPE=='SoftLR':
             filter_type.append(2)
             filter_params.append(config_solver.SHIELD_THRESHOLD) 
 
         c_obs = 'k'
         env = CarSingle5DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(8, 5.5))
+        fig = plt.figure(layout='constrained', figsize=(7.5, 5.5))
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
@@ -389,6 +405,15 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                                      where=fillarray[0:nsteps], color=colorlist[int(idx)], alpha=0.35)
                 axes[1].fill_between(x_times, action_space[1, 0], action_space[1, 1], 
                                      where=fillarray[0:nsteps], color=colorlist[int(idx)], alpha=0.35)
+                if 'CBFDDP-SM' in labellist[int(idx)]:
+                    axes[0].plot(x_times, plot_task_ctrl_list[idx][:, 0], label=labellist[int(idx)]+'-Task', c=colorlist[int(idx)], 
+                                alpha = 0.6, linewidth=1.5, linestyle='--')
+                    axes[1].plot(x_times, plot_task_ctrl_list[idx][:, 1], label=labellist[int(idx)]+'-Task', c=colorlist[int(idx)], 
+                                alpha = 0.6, linewidth=1.5, linestyle='--')
+                    axes[0].plot(x_times, plot_safe_opt_list[idx][:, 0], label=labellist[int(idx)]+'-SafeOpt', c=colorlist[int(idx)], 
+                                alpha = 0.6, linewidth=1.5, linestyle='dotted')
+                    axes[1].plot(x_times, plot_safe_opt_list[idx][:, 1], label=labellist[int(idx)]+'-SafeOpt', c=colorlist[int(idx)], 
+                                alpha = 0.6, linewidth=1.5, linestyle='dotted')
 
             if not hide_label:
                 #axes[0].set_xlabel('Time index', fontsize=legend_fontsize)
@@ -398,8 +423,8 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
             axes[0].set_yticks(ticks=[action_space[0, 0], action_space[0, 1]], 
                                labels=[action_space[0, 0], action_space[0, 1]], 
                                fontsize=legend_fontsize)
-            # axes[0].legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-            #                ncol=3, bbox_to_anchor=(-0.05, 1.2), fancybox=False, shadow=False)
+            axes[0].legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
+                            ncol=2, bbox_to_anchor=(-0.05, 1.7), fancybox=False, shadow=False)
             axes[0].yaxis.set_label_coords(-0.04, 0.5)
 
             if hide_label:

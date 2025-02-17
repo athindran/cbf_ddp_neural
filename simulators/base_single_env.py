@@ -197,6 +197,8 @@ class BaseSingleEnv(BaseEnv):
         safety_metric_history = []
         process_time_history = []
         solver_iters_history = []
+        safe_opt_history = []
+        task_ctrl_history = []
         complete_filter_indices = []
         barrier_filter_indices = []
         deviation_history = []
@@ -237,6 +239,8 @@ class BaseSingleEnv(BaseEnv):
             process_time_history.append(solver_info['process_time'])
             solver_iters_history.append(solver_info['num_iters'])
             deviation_history.append(solver_info['deviation'])
+            safe_opt_history.append(solver_info['safe_opt_ctrl'])
+            task_ctrl_history.append(solver_info['task_ctrl'])
             safety_metric_history.append(self.cost.constraint.get_safety_metric(obs, action))
 
             if advanced_animate:
@@ -293,6 +297,7 @@ class BaseSingleEnv(BaseEnv):
             rollout_episode_callback(
                 self, state_history, action_history, plan_history, step_history, value_history=value_history, process_time_history=process_time_history,
                 solver_iters_history=solver_iters_history, deviation_history=deviation_history, safety_metric_history=safety_metric_history,
+                safe_opt_history=safe_opt_history, task_ctrl_history=task_ctrl_history,
                 barrier_filter_indices=barrier_filter_indices, complete_filter_indices=complete_filter_indices,
                 label=self.agent.policy.filter_type
             )

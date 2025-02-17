@@ -109,6 +109,9 @@ class iLQRSafetyFilter(iLQR):
             #solver_info_0['marginopt'] = solver_info_0['marginopt_next']
             #solver_info_0['is_inside_target'] = solver_info_0['is_inside_target_next']
 
+        solver_info_0['safe_opt_ctrl'] =  jnp.array(control_0)
+        solver_info_0['task_ctrl'] = jnp.array(task_ctrl)
+
         solver_info_0['mark_barrier_filter'] = False
         solver_info_0['mark_complete_filter'] = False
         # Find safe policy from step 1
@@ -126,7 +129,7 @@ class iLQRSafetyFilter(iLQR):
         solver_info_0['marginopt_next'] = solver_info_1['marginopt']
         solver_info_0['is_inside_target_next'] = solver_info_1['is_inside_target']
 
-        if(self.filter_type == "LR"):
+        if(self.filter_type == "LR" or self.filter_type=="SoftLR"):
             solver_info_0['barrier_filter_steps'] = self.barrier_filter_steps
             if(solver_info_1['Vopt'] <= self.lr_threshold):
                 self.filter_steps += 1

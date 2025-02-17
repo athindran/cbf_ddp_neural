@@ -173,7 +173,9 @@ def main(config_file, road_boundary, is_task_ilqr):
             "barrier_indices": kwargs["barrier_filter_indices"],
             "complete_indices": kwargs["complete_filter_indices"],
             'deviation_history': kwargs['deviation_history'],
-            'safety_metrics': kwargs['safety_metric_history']}
+            'safety_metrics': kwargs['safety_metric_history'],
+            'safe_opt_history': kwargs['safe_opt_history'],
+            'task_ctrl_history': kwargs['task_ctrl_history']}
         np.save(os.path.join(fig_folder, "save_data.npy"), save_dict)
 
         solver_info = plan_history[-1]
@@ -194,22 +196,33 @@ def main(config_file, road_boundary, is_task_ilqr):
     if not config_solver.is_task_ilqr:
         out_folder = os.path.join(out_folder, "naivetask")
 
+    filters = []
+    if config_cost.COST_TYPE=='Reachavoid':
+        filters.append('SoftLR')
+    
+    filters.append('CBF')
+    filters.append('SoftCBF')
     for _, yaw_constraint in enumerate(yaw_constraints):
-        for filter_type in ['SoftCBF']:
+        for filter_type in filters:
             print("Simulation starting...")
             print("Road boundary", road_boundary)
             print("Yaw constraint", yaw_constraint)
             print("Filter type", filter_type)
-            config_solver.FILTER_TYPE = filter_type
-            if yaw_constraint is not None:
-                current_out_folder = os.path.join(out_folder, "road_boundary=" + str(road_boundary) +
-                                                  ", yaw=" +
-                                                  str(round(yaw_constraint, 2)))
+            if 'LR' in filter_type:
+                yaw_constraint = 0.5*np.pi
             else:
-                current_out_folder = os.path.join(
-                    out_folder,
-                    "road_boundary=" +
-                    str(road_boundary))
+                yaw_constraint = None
+
+            config_solver.FILTER_TYPE = filter_type
+            # if yaw_constraint is not None:
+            #     current_out_folder = os.path.join(out_folder, "road_boundary=" + str(road_boundary) +
+            #                                       ", yaw=" +
+            #                                       str(round(yaw_constraint, 2)))
+            # else:
+            current_out_folder = os.path.join(
+                out_folder,
+                "road_boundary=" +
+                str(road_boundary))
             current_out_folder = os.path.join(current_out_folder, filter_type)
             config_solver.OUT_FOLDER = current_out_folder
             fig_folder = os.path.join(current_out_folder, "figure")
@@ -230,7 +243,14 @@ def main(config_file, road_boundary, is_task_ilqr):
                     'log.txt'))
 
             config_current_cost = config_ilqr_cost
-            config_current_cost.USE_YAW = False
+
+            if yaw_constraint is not None:
+                config_current_cost.USE_YAW = True
+                config_current_cost.YAW_MAX = yaw_constraint
+                config_current_cost.YAW_MIN = -yaw_constraint
+            else:
+                config_current_cost.USE_YAW = False
+
             config_current_cost.TRACK_WIDTH_RIGHT = road_boundary
             config_current_cost.TRACK_WIDTH_LEFT = road_boundary
             env.visual_extent[2] = -road_boundary
@@ -282,7 +302,8 @@ def main(config_file, road_boundary, is_task_ilqr):
         plot_folder='./plots_summary/',
         tag=plot_tag + "_" + str(road_boundary),
         road_boundary=road_boundary,
-        dt=config_agent.DT)
+        dt=config_agent.DT,
+        filters=filters)
 
 
 if __name__ == "__main__":
