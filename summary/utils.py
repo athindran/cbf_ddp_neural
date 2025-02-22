@@ -354,7 +354,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                         ax.plot(state_data[barrier_filter_indices, 0], state_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.7, markersize=5.0)
     
             ax.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-                      ncol=3, bbox_to_anchor=(-0.05, 1.35), fancybox=False, shadow=False)
+                      ncol=2, bbox_to_anchor=(-0.05, 1.35), fancybox=False, shadow=False)
 
             
             if hide_label:
@@ -424,7 +424,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                                labels=[action_space[0, 0], action_space[0, 1]], 
                                fontsize=legend_fontsize)
             axes[0].legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-                            ncol=2, bbox_to_anchor=(-0.05, 1.7), fancybox=False, shadow=False)
+                            ncol=2, bbox_to_anchor=(-0.05, 1.6), fancybox=False, shadow=False)
             axes[0].yaxis.set_label_coords(-0.04, 0.5)
 
             if hide_label:

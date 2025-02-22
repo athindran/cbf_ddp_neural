@@ -197,10 +197,10 @@ def main(config_file, road_boundary, is_task_ilqr):
         out_folder = os.path.join(out_folder, "naivetask")
 
     filters = []
-    if config_cost.COST_TYPE=='Reachavoid':
-        filters.append('SoftLR')
+    # if config_cost.COST_TYPE=='Reachavoid':
+    #     filters.append('SoftLR')
     
-    filters.append('CBF')
+    #filters.append('CBF')
     filters.append('SoftCBF')
     for _, yaw_constraint in enumerate(yaw_constraints):
         for filter_type in filters:
