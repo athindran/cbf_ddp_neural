@@ -61,20 +61,22 @@ def bicycle_linear_task_policy(run_env_obs):
 
     if run_env_obs.size == 5:
         control_task = np.zeros((2, ))
-        control_task[0] = -1.0 * (run_env_obs[2] - 3.5)
+        vref = 2.5
+        control_task[0] = -1.0 * (run_env_obs[2] - vref)
         # Use only unwrapped yaw phase for this subtraction
-        alpha = (run_env_obs[3] - direction_waypoint)
+        delta_theta = (run_env_obs[3] - direction_waypoint)
 
-        if np.abs(alpha) < 0.1:
+        if np.abs(delta_theta) < 0.1:
             control_task[1] = -1.0 * run_env_obs[4]
         else:
-            control_task[1] = -1.2 * alpha - 0.9 * run_env_obs[4]
+            control_task[1] = -1.2 * delta_theta - 0.9 * run_env_obs[4]
     elif run_env_obs.size == 4:
         control_task = np.zeros((2, ))
-        control_task[0] = -1.0 * (run_env_obs[2] - 1.5)
+        vref = 2.0
+        control_task[0] = -1.0 * (run_env_obs[2] - vref)
         # Use only unwrapped yaw phase for this subtraction
-        alpha = (run_env_obs[3] - direction_waypoint)
+        delta_theta = (run_env_obs[3] - direction_waypoint)
 
-        control_task[1] = -1.5 * alpha
+        control_task[1] = -1.0 * delta_theta
 
     return control_task
