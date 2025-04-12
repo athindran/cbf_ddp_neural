@@ -9,27 +9,25 @@ from jax import random
 
 from .base_dynamics import BaseDynamics
 
-
-class Bicycle5D(BaseDynamics):
+class Pvtol6D(BaseDynamics):
 
     def __init__(self, config: Any, action_space: np.ndarray) -> None:
         """
-        Implements the bicycle dynamics (for Princeton race car). The state is the
-        center of the rear axis.
+        Implements the PVTOL dynamics.
+
+        See https://murray.cds.caltech.edu/index.php/Python-control/Example:_Vertical_takeoff_and_landing_aircraft for reference.
         Args:
             config (Any): an object specifies configuration.
             action_space (np.ndarray): action space.
         """
         super().__init__(config, action_space)
-        self.dim_x = 5  # [x, y, v, psi, delta].
-
-        # load parameters
-        self.wheelbase: float = config.WHEELBASE  # vehicle chassis length
-        self.delta_min = config.DELTA_MIN
-        self.delta_max = config.DELTA_MAX
-        self.v_min = 0
-        self.v_max = config.V_MAX
-        self.id = "bic5D"
+        self.dim_x = 6  # [x, y, theta, xdot, ydot, thetadot].
+        self.mass = 4.0
+        self.sys_inertia = 0.0475
+        self.thrust_offset = 0.25
+        self.g = 9.8
+        self.damping = 0.05
+        self.id = "pvtol6d"
 
     @partial(jax.jit, static_argnames='self')
     def integrate_forward_jax(
@@ -57,11 +55,12 @@ class Bicycle5D(BaseDynamics):
         self, state: DeviceArray, control: DeviceArray
     ) -> DeviceArray:
         deriv = jnp.zeros((self.dim_x,))
-        deriv = deriv.at[0].set(state[2] * jnp.cos(state[3]))
-        deriv = deriv.at[1].set(state[2] * jnp.sin(state[3]))
-        deriv = deriv.at[2].set(control[0])
-        deriv = deriv.at[3].set(state[2] * jnp.tan(state[4]) / self.wheelbase)
-        deriv = deriv.at[4].set(control[1])
+        deriv = deriv.at[0].set(state[3])
+        deriv = deriv.at[1].set(state[4])
+        deriv = deriv.at[2].set(state[5])
+        deriv = deriv.at[3].set((-1*state[3]*self.damping/self.mass) + (control[0] * jnp.cos(state[2])/self.mass) - (control[1] * jnp.sin(state[2])/self.mass))
+        deriv = deriv.at[4].set((-1*self.g - 1*state[4]*self.damping/self.mass) + (control[1] * jnp.cos(state[2])/self.mass) + (control[0] * jnp.sin(state[2])/self.mass))
+        deriv = deriv.at[5].set(control[0] * self.thrust_offset/self.sys_inertia)
         return deriv
 
     @partial(jax.jit, static_argnames='self')
@@ -93,58 +92,8 @@ class Bicycle5D(BaseDynamics):
         k4 = self.disc_deriv(state + k3 * dt, ctrl_clip)
 
         state_nxt = state + (k1 + 2 * k2 + 2 * k3 + k4) * dt / 6
-        # state_nxt = state_nxt.at[2].set(
-        #     jnp.clip(state_nxt[2], self.v_min, self.v_max)
-        # )
-
-        state_nxt = state_nxt.at[4].set(
-            jnp.clip(state_nxt[4], self.delta_min, self.delta_max)
-        )
 
         return state_nxt
-
-    @partial(jax.jit, static_argnames='self')
-    def get_jacobian_fx(
-        self, obs: DeviceArray, control: DeviceArray
-    ) -> Tuple[DeviceArray, DeviceArray]:
-        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -obs[2] * jnp.sin(obs[3]), 0],
-                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3]), 0],
-                        [0, 0, 0, 0, 0],
-                        [0,
-                         0,
-                         jnp.tan(obs[4]) / self.wheelbase,
-                         0,
-                         obs[2] / (1e-6 + self.wheelbase * jnp.cos(obs[4])**2)],
-                        [0, 0, 0, 0, 0]])
-
-        Ad = jnp.eye(self.dim_x) + Ac * self.dt + \
-            0.5 * Ac @ Ac * self.dt * self.dt
-
-        return Ad
-
-    @partial(jax.jit, static_argnames='self')
-    def get_jacobian_fu(
-        self, obs: DeviceArray, control: DeviceArray
-    ) -> DeviceArray:
-        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -obs[2] * jnp.sin(obs[3]), 0],
-                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3]), 0],
-                        [0, 0, 0, 0, 0],
-                        [0,
-                         0,
-                         jnp.tan(obs[4]) / self.wheelbase,
-                         0,
-                         obs[2] / (1e-6 + self.wheelbase * jnp.cos(obs[4])**2)],
-                        [0, 0, 0, 0, 0]])
-
-        Bc = jnp.array([[0, 0],
-                       [0, 0],
-                       [1, 0],
-                       [0, 0],
-                       [0, 1]])
-
-        Bd = self.dt * Bc
-
-        return Bd
 
     @partial(jax.jit, static_argnames='self')
     def get_jacobian(
@@ -160,21 +109,29 @@ class Bicycle5D(BaseDynamics):
     @partial(jax.jit, static_argnames='self')
     def get_jacobian_fx_fu(self, obs: DeviceArray,
                            control: DeviceArray) -> Tuple:
-        Ac = jnp.array([[0, 0, jnp.cos(obs[3]), -obs[2] * jnp.sin(obs[3]), 0],
-                        [0, 0, jnp.sin(obs[3]), obs[2] * jnp.cos(obs[3]), 0],
-                        [0, 0, 0, 0, 0],
+        Ac = jnp.array([[0, 0, 0, 1, 0, 0],
+                        [0, 0, 0, 0, 1, 0],
+                        [0, 0, 0, 0, 0, 1],
                         [0,
                          0,
-                         jnp.tan(obs[4]) / self.wheelbase,
+                         (- control[0] * jnp.sin(obs[2]) - control[1] * jnp.cos(obs[2]))/self.mass,
+                         -self.damping/self.mass,
                          0,
-                         obs[2] / (1e-6 + self.wheelbase * jnp.cos(obs[4])**2)],
-                        [0, 0, 0, 0, 0]])
+                         0],
+                        [0, 
+                         0, 
+                         (control[0] * jnp.cos(obs[2]) - control[1] * jnp.sin(obs[2]))/self.mass,
+                         0,
+                         -self.damping/self.mass,
+                         0],
+                        [0, 0, 0, 0, 0, 0]])
 
         Bc = jnp.array([[0, 0],
                        [0, 0],
-                       [1, 0],
                        [0, 0],
-                       [0, 1]])
+                       [jnp.cos(obs[2])/self.mass, -jnp.sin(obs[2])/self.mass],
+                       [jnp.sin(obs[2])/self.mass, jnp.cos(obs[2])/self.mass],
+                       [self.thrust_offset/self.sys_inertia, 0]])
 
         Ad = jnp.eye(self.dim_x) + Ac * self.dt + \
             0.5 * Ac @ Ac * self.dt * self.dt

@@ -62,3 +62,25 @@ class QuadraticControlCost(BaseMargin):
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
         return self.get_stage_margin(state, ctrl)
+
+class QuadraticStateCost(BaseMargin):
+
+    def __init__(self, Q: np.ndarray, q: np.ndarray):
+        super().__init__()
+        self.Q = jnp.array(Q)  # (n, n)
+        self.q = jnp.array(q)  # (n,)
+
+    @partial(jax.jit, static_argnames='self')
+    def get_stage_margin(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        Qx = jnp.einsum("i,ni->n", state, self.Q)
+        xtQx = jnp.einsum("n,n", state, Qx)
+        qtx = jnp.einsum("n,n", state, self.q)
+        return -0.5 * xtQx - qtx
+
+    @partial(jax.jit, static_argnames='self')
+    def get_target_stage_margin(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        return self.get_stage_margin(state, ctrl)

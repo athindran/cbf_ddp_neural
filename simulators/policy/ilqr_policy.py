@@ -41,7 +41,10 @@ class iLQR(BasePolicy):
         # `controls` include control input at timestep N-1, which is a dummy
         # control of zeros.
         if controls is None:
-            controls = jnp.zeros((self.dim_u, self.N))
+            controls = np.zeros((self.dim_u, self.N))
+            if self.dyn.id == "pvtol6d":
+                controls[1, :] = self.dyn.mass * self.dyn.g
+            controls = jnp.array(controls)
         else:
             assert controls.shape[1] == self.N
             controls = jnp.array(controls)
