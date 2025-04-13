@@ -118,45 +118,17 @@ class Pvtol6DConstraintMargin(BaseMargin):
         Returns:
             DeviceArray: scalar.
         """
-        @jax.jit
-        def roll_forward(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-
-            for _obs_constraint in self.obs_constraint:
-                _obs_constraint: BaseMargin
-                target_cost = jnp.minimum(
-                    target_cost, _obs_constraint.get_stage_margin(
-                        state, ctrl))
-
-            current_state, _ = self.plan_dyn.integrate_forward_jax(
-                current_state, stopping_ctrl)
-
-            return current_state, stopping_ctrl, target_cost, v_min
-
-        @jax.jit
-        def check_stopped(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-            return current_state[2] > v_min
-
-        target_cost = jnp.inf
-
-        stopping_ctrl = jnp.array([0., 0.])
-
-        current_state = jnp.array(state)
-
-        current_state, stopping_ctrl, target_cost, v_min = jax.lax.while_loop(
-            check_stopped, roll_forward, (current_state, stopping_ctrl, target_cost, self.plan_dyn.v_min))
-
-        _, _, target_cost, _ = roll_forward(
-            (current_state, stopping_ctrl, target_cost, v_min))
-
-        return target_cost
+        return self.get_stage_margin(
+            state, ctrl
+        )
 
     @partial(jax.jit, static_argnames='self')
     def get_safety_metric(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
-        return 0.
+        return self.get_stage_margin(
+            state, ctrl
+        )
 
     @partial(jax.jit, static_argnames='self')
     def get_cost_dict(
@@ -242,48 +214,17 @@ class Pvtol6DSoftConstraintMargin(BaseMargin):
         Returns:
             DeviceArray: scalar.
         """
-        @jax.jit
-        def roll_forward(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-
-            curr_target_cost = 0
-            for _obs_constraint in self.obs_constraint:
-                _obs_constraint: BaseMargin
-                curr_target_cost += jnp.exp(-1 * self.kappa * _obs_constraint.get_stage_margin(current_state, stopping_ctrl))
-
-            curr_target_cost = -jnp.log(curr_target_cost)/self.kappa
-
-            target_cost = jnp.minimum(target_cost, curr_target_cost)
-
-            current_state, _ = self.plan_dyn.integrate_forward_jax(
-                current_state, stopping_ctrl)
-
-            return current_state, stopping_ctrl, target_cost, v_min
-
-        @jax.jit
-        def check_stopped(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-            return current_state[2] > v_min
-
-        target_cost = jnp.inf
-
-        stopping_ctrl = jnp.array([0., 0.])
-
-        current_state = jnp.array(state)
-
-        current_state, stopping_ctrl, target_cost, v_min = jax.lax.while_loop(
-            check_stopped, roll_forward, (current_state, stopping_ctrl, target_cost, self.plan_dyn.v_min))
-
-        _, _, target_cost, _ = roll_forward(
-            (current_state, stopping_ctrl, target_cost, v_min))
-
-        return target_cost
+        return self.get_stage_margin(
+            state, ctrl
+        )
 
     @partial(jax.jit, static_argnames='self')
     def get_safety_metric(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
-        return 0.
+        return self.get_stage_margin(
+            state, ctrl
+        )
 
     @partial(jax.jit, static_argnames='self')
     def get_cost_dict(

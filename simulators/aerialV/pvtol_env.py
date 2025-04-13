@@ -188,7 +188,7 @@ class Pvtol6DEnv(BaseSingleEnv):
         ax.scatter(state[0], state[1], c=c, s=s)
         ego = self.agent.footprint
         ego.set_center(state[0:2])
-        ego.set_angle(-state[2]*180.0/np.pi)
+        ego.set_angle(state[2]*180.0/np.pi)
         ego.plot(ax, color=c, lw=lw, alpha=alpha)
 
     def render_obs(self, ax, c: str = 'r'):
@@ -227,7 +227,6 @@ class Pvtol6DEnv(BaseSingleEnv):
             Dict: additional information of the step, such as target margin and
                 safety margin used in reachability analysis.
         """
-        self.min_velocity = 0.05
         if end_criterion is None:
             end_criterion = self.end_criterion
 
@@ -368,4 +367,4 @@ class Pvtol6DEnv(BaseSingleEnv):
         return states_with_final, controls_with_final
 
     def report(self):
-        print("Vertical landing and take-off, circle footprint, circle obstacles!")
+        print("Planar Vertical landing and take-off, rectangular footprint, circle obstacles!")
