@@ -12,7 +12,7 @@ class RectangleFootprint:
         ego_radius: float = 0
     ) -> None:
         if center is None:
-            self.center = np.zeros(3)
+            self.center = np.zeros(2)
         else:
             self.center = center.copy()
         self.ego_radius = ego_radius
@@ -26,5 +26,5 @@ class RectangleFootprint:
 
     def plot(self, ax, color='r', lw=1.5, alpha=1.):
         ego_circle = plt.Rectangle(
-            [self.center[0], self.center[1]], 0.1, 2*self.ego_radius, angle=self.angle, alpha=0.4, color=color)
+            [self.center[0] - 0.05, self.center[1] - self.ego_radius], 0.1, 2*self.ego_radius, angle=self.angle, alpha=0.4, color=color)
         ax.add_patch(ego_circle)

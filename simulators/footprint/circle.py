@@ -11,7 +11,7 @@ class CircleFootprint:
         ego_radius: float = 0
     ) -> None:
         if center is None:
-            self.center = np.zeros(3)
+            self.center = np.zeros(2)
         else:
             self.center = center.copy()
         self.ego_radius = ego_radius
