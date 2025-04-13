@@ -776,6 +776,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     showcontrollist = []
     colors = {}
     colors['SoftLR'] = 'k'
+    colors['LR'] = 'g'
     colors['CBF'] = 'r'
     colors['SoftCBF'] = 'b'
     styles = ['solid', 'dashed', 'dotted']

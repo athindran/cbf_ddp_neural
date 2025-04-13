@@ -31,6 +31,11 @@ def main(config_file):
     config_agent = config['agent']
     config_solver = config['solver']
     config_solver.is_task_ilqr = True
+    plot_tag = config_env.tag
+    if config_solver.is_task_ilqr:
+        plot_tag += '_ilqrtask_'
+    else:
+        plot_tag += '_naivetask_'
 
     config_cost = config['cost']
     dyn_id = config_agent.DYN
@@ -259,7 +264,7 @@ def main(config_file):
     make_pvtol_comparison_report(
         out_folder,
         plot_folder='./plots_summary/',
-        tag=config_env.tag,
+        tag=plot_tag,
         dt=config_agent.DT,
         filters=filters)
 
