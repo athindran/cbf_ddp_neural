@@ -94,46 +94,46 @@ class Pvtol6D(BaseDynamics):
 
         return state_nxt
 
-    # @partial(jax.jit, static_argnames='self')
-    # def get_jacobian(
-    #     self, nominal_states: DeviceArray, nominal_controls: DeviceArray
-    # ) -> Tuple[DeviceArray, DeviceArray]:
-    #     jac = jax.jit(
-    #         jax.vmap(
-    #             self.get_jacobian_fx_fu, in_axes=(
-    #                 1, 1), out_axes=(
-    #                 2, 2)))
-    #     return jac(nominal_states, nominal_controls)
+    @partial(jax.jit, static_argnames='self')
+    def get_jacobian(
+        self, nominal_states: DeviceArray, nominal_controls: DeviceArray
+    ) -> Tuple[DeviceArray, DeviceArray]:
+        jac = jax.jit(
+            jax.vmap(
+                self.get_jacobian_fx_fu, in_axes=(
+                    1, 1), out_axes=(
+                    2, 2)))
+        return jac(nominal_states, nominal_controls)
 
-    # @partial(jax.jit, static_argnames='self')
-    # def get_jacobian_fx_fu(self, obs: DeviceArray,
-    #                        control: DeviceArray) -> Tuple:
-    #     Ac = jnp.array([[0, 0, 0, 1, 0, 0],
-    #                     [0, 0, 0, 0, 1, 0],
-    #                     [0, 0, 0, 0, 0, 1],
-    #                     [0,
-    #                      0,
-    #                      (- control[0] * jnp.sin(obs[2]) - control[1] * jnp.cos(obs[2]))/self.mass,
-    #                      -self.damping/self.mass,
-    #                      0,
-    #                      0],
-    #                     [0, 
-    #                      0, 
-    #                      (control[0] * jnp.cos(obs[2]) - control[1] * jnp.sin(obs[2]))/self.mass,
-    #                      0,
-    #                      -self.damping/self.mass,
-    #                      0],
-    #                     [0, 0, 0, 0, 0, 0]])
+    @partial(jax.jit, static_argnames='self')
+    def get_jacobian_fx_fu(self, obs: DeviceArray,
+                           control: DeviceArray) -> Tuple:
+        Ac = jnp.array([[0, 0, 0, 1, 0, 0],
+                        [0, 0, 0, 0, 1, 0],
+                        [0, 0, 0, 0, 0, 1],
+                        [0,
+                         0,
+                         (- control[0] * jnp.sin(obs[2]) - control[1] * jnp.cos(obs[2]))/self.mass,
+                         -self.damping/self.mass,
+                         0,
+                         0],
+                        [0, 
+                         0, 
+                         (control[0] * jnp.cos(obs[2]) - control[1] * jnp.sin(obs[2]))/self.mass,
+                         0,
+                         -self.damping/self.mass,
+                         0],
+                        [0, 0, 0, 0, 0, 0]])
 
-    #     Bc = jnp.array([[0, 0],
-    #                    [0, 0],
-    #                    [0, 0],
-    #                    [jnp.cos(obs[2])/self.mass, -jnp.sin(obs[2])/self.mass],
-    #                    [jnp.sin(obs[2])/self.mass, jnp.cos(obs[2])/self.mass],
-    #                    [self.thrust_offset/self.sys_inertia, 0]])
+        Bc = jnp.array([[0, 0],
+                       [0, 0],
+                       [0, 0],
+                       [jnp.cos(obs[2])/self.mass, -jnp.sin(obs[2])/self.mass],
+                       [jnp.sin(obs[2])/self.mass, jnp.cos(obs[2])/self.mass],
+                       [self.thrust_offset/self.sys_inertia, 0]])
 
-    #     Ad = jnp.eye(self.dim_x) + Ac * self.dt + \
-    #         0.5 * Ac @ Ac * self.dt * self.dt
-    #     Bd = self.dt * Bc
+        Ad = jnp.eye(self.dim_x) + Ac * self.dt + \
+            0.5 * Ac @ Ac * self.dt * self.dt
+        Bd = self.dt * Bc
 
-    #     return Ad, Bd
+        return Ad, Bd
