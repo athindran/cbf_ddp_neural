@@ -192,7 +192,7 @@ def main(config_file):
         out_folder = os.path.join(out_folder, "naivetask")
 
     filters = []
-    filters.append('SoftLR')
+    #filters.append('SoftLR')
     filters.append('CBF')
     filters.append('SoftCBF')
     for filter_type in filters:
