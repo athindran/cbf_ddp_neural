@@ -15,7 +15,7 @@ from simulators import(
     PvtolReachAvoid6DMargin,
     PrintLogger)
 
-from summary.utils import make_animation_plots, plot_run_summary
+from summary.utils import make_animation_plots, plot_run_summary, make_pvtol_comparison_report
 
 sys.path.append(".")
 
@@ -34,10 +34,9 @@ def main(config_file):
 
     config_cost = config['cost']
     dyn_id = config_agent.DYN
-    plot_tag = config_env.tag
 
+    # May not be needed ATM.
     config_cost.N = config_solver.N
-
     config_cost.WIDTH_RIGHT = config_env.WIDTH_RIGHT
     config_cost.WIDTH_LEFT = config_env.WIDTH_LEFT
     config_cost.HEIGHT_BOTTOM = config_env.HEIGHT_BOTTOM
@@ -89,7 +88,12 @@ def main(config_file):
                     env.agent.dyn))
             env.cost = cost
 
-    config_solver.FILTER_TYPE = "LR"
+    filters = []
+    # if config_cost.COST_TYPE=='Reachavoid':
+    filters.append('SoftLR')
+    filters.append('SoftCBF')
+    #filters.append('CBF')
+    config_solver.FILTER_TYPE = "SoftCBF"
     env.agent.init_policy(
         policy_type=policy_type,
         config=config_solver,
@@ -99,7 +103,7 @@ def main(config_file):
 
     # region: Runs iLQR
     # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    env.agent.policy.get_action(obs=x_cur, state=x_cur)
     env.report()
     ## ------------------------------------ Evaluation starts -------------------------------------------
     # Callback after each timestep for plotting and summarizing evaluation
@@ -180,67 +184,89 @@ def main(config_file):
                     solver_info['filter_steps']))
 
     # Run sim
-    current_out_folder = config_solver.OUT_FOLDER
-    end_criterion = "timeout"
+    end_criterion = "failure"
+    out_folder = config_solver.OUT_FOLDER
 
-    fig_folder = os.path.join(current_out_folder, "figure")
-    fig_prog_folder = os.path.join(fig_folder, "progress")
-    os.makedirs(fig_prog_folder, exist_ok=True)
-    copyfile(
-        config_file,
-        os.path.join(
-            current_out_folder,
-            'config.yaml'))
-    sys.stdout = PrintLogger(
-        os.path.join(
-            config_solver.OUT_FOLDER,
-            'log.txt'))
-    sys.stderr = PrintLogger(
-        os.path.join(
-            config_solver.OUT_FOLDER,
-            'log.txt'))
+    # Naive task is not compatible with current configuration.
+    if not config_solver.is_task_ilqr:
+        out_folder = os.path.join(out_folder, "naivetask")
 
-    config_current_cost = config_ilqr_cost
+    filters = []
+    filters.append('SoftLR')
+    filters.append('SoftCBF')
+    #filters.append('CBF')
+    for filter_type in filters:
+        current_out_folder = os.path.join(out_folder, filter_type)
+        config_solver.OUT_FOLDER = current_out_folder
+        config_solver.FILTER_TYPE = filter_type
 
-    cost = PvtolReachAvoid6DMargin(
-                config_current_cost, copy.deepcopy(
-                    env.agent.dyn))
-    env.cost = cost
-    env.agent.init_policy(
-        policy_type=policy_type,
-        config=config_solver,
-        cost=cost,
-        task_cost=task_cost)
+        fig_folder = os.path.join(current_out_folder, "figure")
+        fig_prog_folder = os.path.join(fig_folder, "progress")
+        os.makedirs(fig_prog_folder, exist_ok=True)
+        copyfile(
+            config_file,
+            os.path.join(
+                current_out_folder,
+                'config.yaml'))
+        sys.stdout = PrintLogger(
+            os.path.join(
+                config_solver.OUT_FOLDER,
+                'log.txt'))
+        sys.stderr = PrintLogger(
+            os.path.join(
+                config_solver.OUT_FOLDER,
+                'log.txt'))
 
-    # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+        config_current_cost = copy.deepcopy(config_ilqr_cost)
+        if 'LR' in filter_type:
+            config_current_cost.W_1 = 1e-4
+            config_current_cost.W_2 = 1e-4
 
-    nominal_states, result, traj_info = env.simulate_one_trajectory(
-        T_rollout=max_iter_receding, end_criterion=end_criterion,
-        reset_kwargs=dict(state=x_cur),
-        rollout_step_callback=rollout_step_callback,
-        rollout_episode_callback=rollout_episode_callback,
-    )
+        cost = PvtolReachAvoid6DMargin(
+                    config_current_cost, copy.deepcopy(
+                        env.agent.dyn))
+        env.cost = cost
+        env.agent.init_policy(
+            policy_type=policy_type,
+            config=config_solver,
+            cost=cost,
+            task_cost=task_cost)
 
-    print("result:", result)
-    print(traj_info['step_history'][-1]["done_type"])
-    constraints: Dict = traj_info['step_history'][-1]['constraints']
-    for k, v in constraints.items():
-        print(f"{k}: {v[0, 1]:.1e}")
+        env.agent.policy.get_action(obs=x_cur, state=x_cur)
 
-    # endregion
+        nominal_states, result, traj_info = env.simulate_one_trajectory(
+            T_rollout=max_iter_receding, end_criterion=end_criterion,
+            reset_kwargs=dict(state=x_cur),
+            rollout_step_callback=rollout_step_callback,
+            rollout_episode_callback=rollout_episode_callback,
+        )
 
-    # region: Visualizes
-    gif_path = os.path.join(fig_folder, 'rollout.gif')
-    frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
-    with imageio.get_writer(gif_path, mode='I') as writer:
-        for i in range(len(nominal_states) - 1):
-            if frame_skip != 1 and (i + 1) % frame_skip != 0:
-                continue
-            filename = os.path.join(
-                fig_prog_folder, str(i + 1) + ".png")
-            image = imageio.imread(filename)
-            writer.append_data(image)
+        print("result:", result)
+        print(traj_info['step_history'][-1]["done_type"])
+        constraints: Dict = traj_info['step_history'][-1]['constraints']
+        for k, v in constraints.items():
+            print(f"{k}: {v[0, 1]:.1e}")
+
+        # endregion
+
+        # region: Visualizes
+        gif_path = os.path.join(fig_folder, 'rollout.gif')
+        frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
+        with imageio.get_writer(gif_path, mode='I') as writer:
+            for i in range(len(nominal_states) - 1):
+                if frame_skip != 1 and (i + 1) % frame_skip != 0:
+                    continue
+                filename = os.path.join(
+                    fig_prog_folder, str(i + 1) + ".png")
+                image = imageio.imread(filename)
+                writer.append_data(image)
+
+    make_pvtol_comparison_report(
+        out_folder,
+        plot_folder='./plots_summary/',
+        tag=config_env.tag,
+        dt=config_agent.DT,
+        filters=filters)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

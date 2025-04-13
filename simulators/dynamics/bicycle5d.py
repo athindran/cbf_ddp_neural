@@ -29,7 +29,6 @@ class Bicycle5D(BaseDynamics):
         self.delta_max = config.DELTA_MAX
         self.v_min = 0
         self.v_max = config.V_MAX
-        self.id = "bic5D"
 
     @partial(jax.jit, static_argnames='self')
     def integrate_forward_jax(

@@ -38,6 +38,7 @@ class Pvtol6DEnv(BaseSingleEnv):
         if self.obsc_type == 'circle':
             for circle_spec in self.cost.constraint.obs_spec:
                 self.obs_vertices_list.append(circle_spec)
+        self.g_x_fail = config_env.G_X_FAIL
 
         # Initializes.
         self.reset_rej_sampling = getattr(

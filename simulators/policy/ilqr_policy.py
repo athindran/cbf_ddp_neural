@@ -42,7 +42,7 @@ class iLQR(BasePolicy):
         # control of zeros.
         if controls is None:
             controls = np.zeros((self.dim_u, self.N))
-            if self.dyn.id == "pvtol6d":
+            if self.dyn.id == "PVTOL6D":
                 controls[1, :] = self.dyn.mass * self.dyn.g
             controls = jnp.array(controls)
         else:

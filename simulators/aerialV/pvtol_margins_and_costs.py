@@ -15,10 +15,12 @@ class Pvtol6DCost(BaseMargin):
     def __init__(self, config, plan_dyn):
         super().__init__()
         self.R = jnp.array([[config.W_CTRL_X, 0.0], [0.0, config.W_CTRL_Y]])
-        self.ctrl_cost = QuadraticControlCost(R=self.R, r=jnp.zeros(plan_dyn.dim_u))
+        state_ref = jnp.zeros((plan_dyn.dim_x, ))
+        control_ref = jnp.array([0.0, plan_dyn.mass*plan_dyn.g])
+        self.ctrl_cost = QuadraticControlCost(ref=control_ref, R=self.R, r=jnp.zeros(plan_dyn.dim_u))
         self.Q =jnp.diag(jnp.array([config.W_STATE_X, config.W_STATE_Y, config.W_STATE_THETA, config.W_STATE_XD, config.W_STATE_YD, config.W_STATE_THETAD]))
-        self.state_cost = QuadraticStateCost(Q=self.Q, q=jnp.zeros(plan_dyn.dim_x))
-        self.dyn = plan_dyn
+        self.state_cost = QuadraticStateCost(ref=state_ref, Q=self.Q, q=jnp.zeros(plan_dyn.dim_x))
+        #self.dyn = plan_dyn
 
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
@@ -33,10 +35,8 @@ class Pvtol6DCost(BaseMargin):
         Returns:
             DeviceArray: scalar.
         """
-        state_ref = jnp.zeros((self.dyn.dim_x, ))
-        control_ref = jnp.array([0.0, self.dyn.mass*self.dyn.g])
-        cost = -1*self.state_cost.get_stage_margin(state - state_ref, ctrl - control_ref)
-        cost += -1*self.ctrl_cost.get_stage_margin(state - state_ref, ctrl - control_ref)
+        cost = -1*self.state_cost.get_stage_margin(state, ctrl)
+        cost += -1*self.ctrl_cost.get_stage_margin(state, ctrl)
 
         return cost
 
@@ -195,7 +195,8 @@ class PvtolReachAvoid6DMargin(BaseMargin):
 
         if plan_dyn.dim_u == 2:
             R = jnp.array([[config.W_1, 0.0], [0.0, config.W_2]])
-        self.ctrl_cost = QuadraticControlCost(R=R, r=jnp.zeros(plan_dyn.dim_u))
+        control_ref = jnp.array([0.0, plan_dyn.mass*plan_dyn.g])
+        self.ctrl_cost = QuadraticControlCost(ref=control_ref, R=R, r=jnp.zeros(plan_dyn.dim_u))
         self.constraint.ctrl_cost = QuadraticControlCost(
             R=R, r=jnp.zeros(plan_dyn.dim_u))
         self.N = config.N

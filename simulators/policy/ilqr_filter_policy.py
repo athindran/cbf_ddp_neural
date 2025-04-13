@@ -54,7 +54,7 @@ class iLQRSafetyFilter(iLQR):
                 self.config,
                 self.rollout_dyn_2,
                 self.task_cost)
-        elif self.dyn.id ==  "pvtol6d":
+        elif self.dyn.id ==  "PVTOL6D":
             self.task_policy = pvtol_linear_task_policy
         else:
             self.task_policy = bicycle_linear_task_policy
@@ -86,7 +86,7 @@ class iLQRSafetyFilter(iLQR):
 
         if self.config.is_task_ilqr:
             task_ctrl, _ = self.task_policy.get_action(obs, None, **kwargs)
-        elif self.dyn.id ==  "pvtol6d":
+        elif self.dyn.id ==  "PVTOL6D":
             task_ctrl = self.task_policy(initial_state, self.dyn)
         else:
             task_ctrl = self.task_policy(initial_state)
@@ -145,8 +145,11 @@ class iLQRSafetyFilter(iLQR):
                 # Warm start for next cycle
                 solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:,
                                                                                        0:self.N - 1].set(solver_info_0['controls'][:, 1:self.N])
-                solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(
-                    self.dyn.ctrl_space[0, 0])
+                if self.dyn.id ==  "PVTOL6D":
+                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 1].set(self.dyn.mass * self.dyn.g)
+                else:
+                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.ctrl_space[0, 0])
+
                 solver_info_0['mark_complete_filter'] = True
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = np.linalg.norm(
@@ -286,8 +289,10 @@ class iLQRSafetyFilter(iLQR):
         solver_info_0['reinit_controls'] = jnp.zeros((self.dim_u, self.N))
         solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 0:self.N - 1].set(
             solver_info_0['controls'][:, 1:self.N])
-        solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(
-            self.dyn.ctrl_space[0, 0])
+        if self.dyn.id ==  "PVTOL6D":
+            solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 1].set(self.dyn.mass * self.dyn.g)
+        else:
+            solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.ctrl_space[0, 0])
         solver_info_0['mark_complete_filter'] = True
         solver_info_0['deviation'] = np.linalg.norm(control_0 - task_ctrl)
         if solver_info_0['is_inside_target']:

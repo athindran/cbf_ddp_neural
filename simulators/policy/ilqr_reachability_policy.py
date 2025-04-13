@@ -23,7 +23,10 @@ class iLQRReachability(iLQR):
     if controls is None:
       # For consistent comparisons, initialize with zeros
       controls = np.zeros((self.dim_u, self.N))
-      controls[0, :] = self.dyn.ctrl_space[0, 0]
+      if self.dyn.id == "PVTOL6D":
+        controls[1, :] = self.dyn.mass * self.dyn.g
+      elif self.dyn_id == "Bicycle5D" or self.dyn_id == "Bicycle6D":
+        controls[0, :] = self.dyn.ctrl_space[0, 0]
       controls = jnp.array(controls)
     else:
       assert controls.shape[1] == self.N
