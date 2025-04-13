@@ -80,7 +80,6 @@ class iLQRSafetyFilter(iLQR):
     ) -> np.ndarray:
 
         # Linear feedback policy
-        start_time = time.time()
         initial_state = np.array(kwargs['state'])
         stopping_ctrl = np.array([self.dyn.ctrl_space[0, 0], 0])
 
@@ -137,7 +136,6 @@ class iLQRSafetyFilter(iLQR):
             solver_info_0['barrier_filter_steps'] = self.barrier_filter_steps
             if(solver_info_1['Vopt'] <= self.lr_threshold):
                 self.filter_steps += 1
-                solver_info_0['process_time'] = time.time() - start_time
                 solver_info_0['filter_steps'] = self.filter_steps
                 solver_info_0['resolve'] = True
                 solver_info_0['reinit_controls'] = jnp.zeros(
@@ -162,7 +160,6 @@ class iLQRSafetyFilter(iLQR):
                     return control_0 + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
             else:
                 solver_info_0['filter_steps'] = self.filter_steps
-                solver_info_0['process_time'] = time.time() - start_time
                 solver_info_0['resolve'] = True
                 solver_info_0['bootstrap_next_solution'] = solver_info_1
                 solver_info_0['reinit_controls'] = jnp.array(
@@ -265,7 +262,6 @@ class iLQRSafetyFilter(iLQR):
                     solver_info_0['mark_barrier_filter'] = True
                 solver_info_0['barrier_filter_steps'] = self.barrier_filter_steps
                 solver_info_0['filter_steps'] = self.filter_steps
-                solver_info_0['process_time'] = time.time() - start_time
                 solver_info_0['resolve'] = False
                 solver_info_0['bootstrap_next_solution'] = solver_info_1
                 solver_info_0['reinit_controls'] = jnp.array(
@@ -283,7 +279,6 @@ class iLQRSafetyFilter(iLQR):
         # Safe policy
         solver_info_0['barrier_filter_steps'] = self.barrier_filter_steps
         solver_info_0['filter_steps'] = self.filter_steps
-        solver_info_0['process_time'] = time.time() - start_time
         solver_info_0['resolve'] = True
         solver_info_0['num_iters'] = num_iters
         solver_info_0['reinit_controls'] = jnp.zeros((self.dim_u, self.N))
