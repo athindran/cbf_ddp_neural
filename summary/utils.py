@@ -766,7 +766,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
 
     hide_label = False
 
-    legend_fontsize = 9
+    legend_fontsize = 8
 
     suffixlist = []
     labellist = []
@@ -857,14 +857,14 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
         c_obs = 'k'
         env = Pvtol6DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(7.5, 5.5))
+        fig = plt.figure(layout='constrained', figsize=(7.5, 5.8))
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
         # track, obstacles, footprint
         env.render_obs(ax=ax, c=c_obs)
         ax.axis(env.visual_extent)
-        ax.set_aspect('equal')
+        #ax.set_aspect('equal')
 
         lgd_c = True
         lgd_b = True
@@ -917,7 +917,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                 fra.axes.xaxis.set_ticklabels([])
                 fra.axes.yaxis.set_ticklabels([])
             else:
-                ax.set_xticks(ticks=[0, env.visual_extent[1]], labels=[0, env.visual_extent[1]], 
+                ax.set_xticks(ticks=[env.visual_extent[0], env.visual_extent[1]], labels=[env.visual_extent[0], env.visual_extent[1]], 
                               fontsize=legend_fontsize)
                 ax.set_yticks(ticks=[env.visual_extent[2], env.visual_extent[3]], 
                               labels=[env.visual_extent[2], env.visual_extent[3]], 
@@ -963,9 +963,9 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                                 alpha = 0.6, linewidth=1.5, linestyle='--')
                     axes[1].plot(x_times, plot_task_ctrl_list[idx][:, 1], label=labellist[int(idx)]+'-Task', c=colorlist[int(idx)], 
                                 alpha = 0.6, linewidth=1.5, linestyle='--')
-                    axes[0].plot(x_times, plot_safe_opt_list[idx][:, 0], label=labellist[int(idx)]+'-SafeOpt', c=colorlist[int(idx)], 
+                    axes[0].plot(x_times, plot_safe_opt_list[idx][:, 0], label=labellist[int(idx)]+'-Safe', c=colorlist[int(idx)], 
                                 alpha = 0.6, linewidth=1.5, linestyle='dotted')
-                    axes[1].plot(x_times, plot_safe_opt_list[idx][:, 1], label=labellist[int(idx)]+'-SafeOpt', c=colorlist[int(idx)], 
+                    axes[1].plot(x_times, plot_safe_opt_list[idx][:, 1], label=labellist[int(idx)]+'-Safe', c=colorlist[int(idx)], 
                                 alpha = 0.6, linewidth=1.5, linestyle='dotted')
 
             if not hide_label:
@@ -989,10 +989,10 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                 axes[1].set_ylabel('Thrust Y', fontsize=legend_fontsize)
             #axes[1].grid(True)
             axes[1].set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
-            axes[1].set_yticks(ticks=[25., action_space[1, 1]], 
-                               labels=[25., action_space[1, 1]], 
+            axes[1].set_yticks(ticks=[30., 45.], 
+                               labels=[30., 45.], 
                                fontsize=legend_fontsize)
-            axes[1].set_ylim([25., action_space[1, 1]])
+            axes[1].set_ylim([30., 45.])
             #axes[1].legend(fontsize=legend_fontsize)
             axes[1].yaxis.set_label_coords(-0.04, 0.5)
             axes[1].xaxis.set_label_coords(0.5, -0.04)

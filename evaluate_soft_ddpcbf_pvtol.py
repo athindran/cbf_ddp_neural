@@ -88,11 +88,6 @@ def main(config_file):
                     env.agent.dyn))
             env.cost = cost
 
-    filters = []
-    # if config_cost.COST_TYPE=='Reachavoid':
-    filters.append('SoftLR')
-    filters.append('SoftCBF')
-    #filters.append('CBF')
     config_solver.FILTER_TYPE = "SoftCBF"
     env.agent.init_policy(
         policy_type=policy_type,
@@ -193,8 +188,8 @@ def main(config_file):
 
     filters = []
     filters.append('SoftLR')
+    filters.append('CBF')
     filters.append('SoftCBF')
-    #filters.append('CBF')
     for filter_type in filters:
         current_out_folder = os.path.join(out_folder, filter_type)
         config_solver.OUT_FOLDER = current_out_folder
@@ -224,7 +219,7 @@ def main(config_file):
 
         cost = PvtolReachAvoid6DMargin(
                     config_current_cost, copy.deepcopy(
-                        env.agent.dyn))
+                        env.agent.dyn), filter_type=filter_type)
         env.cost = cost
         env.agent.init_policy(
             policy_type=policy_type,

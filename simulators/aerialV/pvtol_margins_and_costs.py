@@ -57,6 +57,129 @@ class Pvtol6DCost(BaseMargin):
             state, ctrl
         )
 
+class Pvtol6DConstraintMargin(BaseMargin):
+    def __init__(self, config, plan_dyn):
+        super().__init__()
+        # System parameters.
+        self.ego_radius = config.EGO_RADIUS
+
+        # Safety cost function parameters.
+        self.width_right = config.WIDTH_RIGHT
+        self.width_left = config.WIDTH_LEFT
+        self.kappa = config.SMOOTHING_TEMP
+
+        self.obs_spec = config.OBS_SPEC
+        self.obsc_type = config.OBSC_TYPE
+        self.plan_dyn = plan_dyn
+
+        self.dim_x = plan_dyn.dim_x
+        self.dim_u = plan_dyn.dim_u
+
+        self.obs_constraint = []
+        if self.obsc_type == 'circle':
+            for circle_spec in self.obs_spec:
+                self.obs_constraint.append(
+                    CircleObsMargin(
+                        circle_spec=circle_spec, buffer=config.EGO_RADIUS
+                    )
+                )
+
+    @partial(jax.jit, static_argnames='self')
+    def get_stage_margin(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        """
+        Args:
+            state (DeviceArray, vector shape)
+            ctrl (DeviceArray, vector shape)
+
+        Returns:
+            DeviceArray: scalar.
+        """
+        cost = jnp.inf
+
+        for _obs_constraint in self.obs_constraint:
+            _obs_constraint: BaseMargin
+            cost = jnp.minimum(
+                cost, _obs_constraint.get_stage_margin(
+                    state, ctrl))
+
+        return cost
+
+    @partial(jax.jit, static_argnames='self')
+    def get_target_stage_margin(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        """
+        Args:
+            state (DeviceArray, vector shape)
+            ctrl (DeviceArray, vector shape)
+
+        Returns:
+            DeviceArray: scalar.
+        """
+        @jax.jit
+        def roll_forward(args):
+            current_state, stopping_ctrl, target_cost, v_min = args
+
+            for _obs_constraint in self.obs_constraint:
+                _obs_constraint: BaseMargin
+                target_cost = jnp.minimum(
+                    target_cost, _obs_constraint.get_stage_margin(
+                        state, ctrl))
+
+            current_state, _ = self.plan_dyn.integrate_forward_jax(
+                current_state, stopping_ctrl)
+
+            return current_state, stopping_ctrl, target_cost, v_min
+
+        @jax.jit
+        def check_stopped(args):
+            current_state, stopping_ctrl, target_cost, v_min = args
+            return current_state[2] > v_min
+
+        target_cost = jnp.inf
+
+        stopping_ctrl = jnp.array([0., 0.])
+
+        current_state = jnp.array(state)
+
+        current_state, stopping_ctrl, target_cost, v_min = jax.lax.while_loop(
+            check_stopped, roll_forward, (current_state, stopping_ctrl, target_cost, self.plan_dyn.v_min))
+
+        _, _, target_cost, _ = roll_forward(
+            (current_state, stopping_ctrl, target_cost, v_min))
+
+        return target_cost
+
+    @partial(jax.jit, static_argnames='self')
+    def get_safety_metric(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        return 0.
+
+    @partial(jax.jit, static_argnames='self')
+    def get_cost_dict(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> Dict:
+        """
+        Args:
+            state (DeviceArray, vector shape)
+            ctrl (DeviceArray, vector shape)
+
+        Returns:
+            DeviceArray: scalar.
+        """
+        obs_cons = jnp.inf
+        for _obs_constraint in self.obs_constraint:
+            _obs_constraint: BaseMargin
+            obs_cons = jnp.minimum(
+                obs_cons, _obs_constraint.get_stage_margin(
+                    state, ctrl))
+
+        return dict(
+            obs_cons=obs_cons
+        )
 
 class Pvtol6DSoftConstraintMargin(BaseMargin):
     def __init__(self, config, plan_dyn):
@@ -190,8 +313,10 @@ class PvtolReachAvoid6DMargin(BaseMargin):
     def __init__(self, config, plan_dyn, filter_type='CBF'):
         super().__init__()
         # Removing the square
-        #if filter_type == 'SoftCBF' or filter_type=='SoftLR':
-        self.constraint = Pvtol6DSoftConstraintMargin(config, plan_dyn)
+        if filter_type == 'SoftCBF' or filter_type=='SoftLR':
+            self.constraint = Pvtol6DSoftConstraintMargin(config, plan_dyn)
+        else:
+            self.constraint = Pvtol6DConstraintMargin(config, plan_dyn)
 
         if plan_dyn.dim_u == 2:
             R = jnp.array([[config.W_1, 0.0], [0.0, config.W_2]])
