@@ -198,7 +198,7 @@ def main(config_file, road_boundary, is_task_ilqr):
 
     filters = []
     # if config_cost.COST_TYPE=='Reachavoid':
-    #     filters.append('SoftLR')
+    #filters.append('SoftLR')
     
     #filters.append('CBF')
     filters.append('SoftCBF')
@@ -242,7 +242,11 @@ def main(config_file, road_boundary, is_task_ilqr):
                     config_solver.OUT_FOLDER,
                     'log.txt'))
 
-            config_current_cost = config_ilqr_cost
+            config_current_cost = copy.deepcopy(config_ilqr_cost)
+
+            if 'LR' in filter_type:
+                config_current_cost.W_ACCEL = 1e-4
+                config_current_cost.W_OMEGA = 1e-4
 
             if yaw_constraint is not None:
                 config_current_cost.USE_YAW = True

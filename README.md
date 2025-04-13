@@ -1,3 +1,5 @@
 # SoftDDPCBF
 
-To debug further tomorrow. There are isolated cycles where the process time suddenly hits 1s. Is it a cache miss or a profiling issue?
+This is a repository for using CBF-DDP with soft minimum and maximum operators in place of the hard operators that were originally used. All changes are contained in the main branch. For public release, the code will go through another iteration of cleaning.
+
+Reach out to arkumar[at]princeton.edu for more questions.
