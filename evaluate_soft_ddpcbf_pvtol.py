@@ -103,7 +103,7 @@ def main(config_file):
 
     # region: Runs iLQR
     # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur)
+    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
     env.report()
     ## ------------------------------------ Evaluation starts -------------------------------------------
     # Callback after each timestep for plotting and summarizing evaluation
@@ -232,7 +232,7 @@ def main(config_file):
             cost=cost,
             task_cost=task_cost)
 
-        env.agent.policy.get_action(obs=x_cur, state=x_cur)
+        env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
 
         nominal_states, result, traj_info = env.simulate_one_trajectory(
             T_rollout=max_iter_receding, end_criterion=end_criterion,

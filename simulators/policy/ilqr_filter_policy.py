@@ -195,12 +195,12 @@ class iLQRSafetyFilter(iLQR):
             scaled_c = constraint_violation
 
             # Scaling parameter
-            scaling_factor = 1.2
+            scaling_factor = 0.8
 
             # Exit loop once CBF constraint satisfied or maximum iterations
             # violated
             control_bias_term = np.zeros((2,))
-            while((constraint_violation < cbf_tol or warmup) and num_iters < 2):
+            while((constraint_violation < cbf_tol or warmup) and num_iters < 5):
                 num_iters = num_iters + 1
 
                 # Extract information from solver for enforcing constraint
