@@ -52,8 +52,14 @@ def barrier_filter_quadratic(P, p, c, initialize, control_bias_term=np.zeros((2,
         return np.array([0., 0.])
     return np.array([u[0].value, u[1].value])
 
-# Unused as we started using iLQR task policy
+def pvtol_linear_task_policy(obs, dyn):
+    lqr_tuned_gain = np.array([[-1.00000000e+00, 1.34334159e-16, 7.85405998e+00, -1.60495816e+00, 1.31261662e-15,  2.06849834e+00],
+        [-1.74437640e-17, 1.00000000e+00, 1.79332809e-15, -1.62742386e-17, 2.95041664e+00,  6.31223160e-17]])
 
+    control_task = -lqr_tuned_gain @ obs
+    control_task[1] = control_task[1] + dyn.mass * dyn.g
+
+    return control_task
 
 def bicycle_linear_task_policy(run_env_obs):
     lookahead_distance = 4.0

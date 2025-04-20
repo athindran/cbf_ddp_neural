@@ -1,0 +1,73 @@
+environment:
+  SEED: 0
+  NUM_AGENTS: 1
+  # LOOP: true
+  TIMEOUT: 100
+  # DONE FLAG PARAM
+  END_CRITERION: failure
+  G_X_FAIL: 0.0
+  WIDTH_RIGHT: 8.0
+  WIDTH_LEFT: 8.0
+  HEIGHT_TOP: 7.0
+  HEIGHT_BOTTOM: 1.0
+  OBSC_TYPE: circle
+  OBS_SPEC:
+    - [2.1, 2.0, 0.8]
+    - [-1.5, 2.0, 0.8]
+    - [0.0, 5.5, 0.8]
+  RESET_SPACE:
+    - [-5.0, 5.0]
+    - [-7.0, 7.0]
+    - [-1.5, 1.5]
+    - [-1.5, 1.5]
+    - [-1.5, 1.5]
+    - [-1.5, 1.5]
+
+  tag: 'mul_obs_reachability_config1_pvtol6d'
+
+cost:
+  # Task policy tuned weights
+  W_STATE_X: 1.0
+  W_STATE_Y: 1.0
+  W_STATE_THETA: 1.0
+  W_STATE_XD: 1.0
+  W_STATE_YD: 1.0
+  W_STATE_THETAD: 1.0
+  W_CTRL_X: 0.1
+  W_CTRL_Y: 0.1
+  
+  # Safety DDP parameters
+  COST_TYPE: Reachability
+  # SAFETY COST PARAM
+  W_1: 0.05
+  W_2: 0.05
+  SMOOTHING_TEMP: 3.0
+
+agent:
+  AGENT_ID: ego
+  DYN: PVTOL6D
+  FOOTPRINT: Rectangle
+  EGO_RADIUS: 0.6
+  ACTION_RANGE:
+    - [-2.0, 2.0]
+    - [20.0, 50.0]
+  DT: 0.01
+
+solver:
+  INIT_STATE: [3., 6., 0.0, 0.0, 0.0, 0.0]
+  N: 50
+  MAX_ITER: 20
+  MAX_ITER_RECEDING: 1200
+  # Line search options: 'baseline'.
+  # Baseline seems to be good enough for most cases.
+  LINE_SEARCH: 'baseline'
+  # Filter options: 'none', 'LR', 'CBF'
+  FILTER_TYPE: 'SoftCBF'
+  CBF_TYPE: 'quadratic'
+  CBF_GAMMA: 0.99
+  SOFT_CBF_GAMMA: 0.99
+  LR_THRESHOLD: 0.0
+  OUT_FOLDER: exps_may/ilqr/pvtol6D/reachability_experiment_mulobs_config1/
+  DEVICE: cpu
+  FIG_SIZE_X: 5.0
+  FIG_SIZE_Y: 5.0

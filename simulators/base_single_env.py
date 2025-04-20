@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Any, Tuple, Optional, Callable, List, Dict, Union
 import numpy as np
+import time
 from gym import spaces
 from tqdm import tqdm
 
@@ -213,9 +214,11 @@ class BaseSingleEnv(BaseEnv):
         prev_action = np.array([0.0, 0.0])
         for t in range(T_rollout):
             #kwargs['state'] = self.state.copy()
+            start_time = time.time()
             action, solver_info = self.agent.get_action(
                 obs=obs, controls=controls_initialize, prev_sol=prev_sol, state=self.state, prev_action=prev_action
             )
+            solver_info['process_time'] = time.time() - start_time
             prev_action = np.array( action )
             prev_sol = solver_info
 

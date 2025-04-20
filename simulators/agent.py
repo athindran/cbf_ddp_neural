@@ -5,11 +5,13 @@ import numpy as np
 # Dynamics.
 from .dynamics.bicycle5d import Bicycle5D
 from .dynamics.bicycle4d import Bicycle4D
+from .dynamics.pvtol6d import Pvtol6D
 
 from .costs.base_margin import BaseMargin
 
 # Footprint.
 from .footprint.circle import CircleFootprint
+from .footprint.rectangle import RectangleFootprint
 
 # Policy.
 from .policy.base_policy import BasePolicy
@@ -37,6 +39,8 @@ class Agent:
             self.dyn = Bicycle5D(config, action_space)
         elif config.DYN == "Bicycle4D":
             self.dyn = Bicycle4D(config, action_space)
+        elif config.DYN == "PVTOL6D":
+            self.dyn = Pvtol6D(config, action_space)
         else:
             raise ValueError("Dynamics type not supported!")
 
@@ -47,6 +51,8 @@ class Agent:
 
         if config.FOOTPRINT == "Circle":
             self.footprint = CircleFootprint(ego_radius=config.EGO_RADIUS)
+        elif config.FOOTPRINT == "Rectangle":
+            self.footprint = RectangleFootprint(ego_radius=config.EGO_RADIUS)
 
         # Policy should be initialized by `init_policy()`.
         self.policy = None

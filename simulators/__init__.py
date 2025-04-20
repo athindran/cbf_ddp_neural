@@ -21,5 +21,7 @@ from .policy.base_policy import BasePolicy
 from .dynamics.bicycle5d import Bicycle5D
 #from .pendulum.pendulum import Pendulum
 from .car.car_single import CarSingle5DEnv
+from .aerialV.pvtol_env import Pvtol6DEnv
+from .aerialV.pvtol_margins_and_costs import Pvtol6DCost, PvtolReachAvoid6DMargin
 
 from .utils import save_obj, load_obj, PrintLogger

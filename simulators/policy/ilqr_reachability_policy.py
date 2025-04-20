@@ -23,7 +23,11 @@ class iLQRReachability(iLQR):
     if controls is None:
       # For consistent comparisons, initialize with zeros
       controls = np.zeros((self.dim_u, self.N))
-      controls[0, :] = self.dyn.ctrl_space[0, 0]
+      # NOTE: Comment the environment specific branching for profiling.
+      if self.dyn.id == "PVTOL6D":
+        controls[1, :] = self.dyn.mass * self.dyn.g
+      elif self.dyn.id == "Bicycle4D" or self.dyn.id == "Bicycle5D":
+        controls[0, :] = self.dyn.ctrl_space[0, 0]
       controls = jnp.array(controls)
     else:
       assert controls.shape[1] == self.N
@@ -76,15 +80,17 @@ class iLQRReachability(iLQR):
 
       # Terminates early if the objective improvement is negligible.
       if converged:
+        #print(f"Converged in {i + 1} iterations with {alpha_chosen}")
         status = 1
         break
 
     t_process = time.time() - time0
+    #print(f"Reachability solver took {t_process} seconds with status {status}")
     states = np.asarray(states)
     controls = np.asarray(controls)
     solver_info = dict(
         states=states, controls=controls, reinit_controls=controls, t_process=t_process, status=status, Vopt=J, marginopt=reachable_margin,
-        grad_x=V_x, grad_xx=V_xx, B0=fu[:, :, 0], is_inside_target=False,  K_closed_loop=K_closed_loop, k_open_loop=k_open_loop,
+        grad_x=V_x, grad_xx=V_xx, B0=fu[:, :, 0], is_inside_target=False,  K_closed_loop=K_closed_loop, k_open_loop=k_open_loop, num_ddp_iters=i + 1,
     )
 
     return controls[:, 0], solver_info

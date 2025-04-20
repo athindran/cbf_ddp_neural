@@ -19,6 +19,7 @@ class BaseDynamics(ABC):
         self.dt: float = config.DT  # time step for each planning step
         self.ctrl_space = action_space.copy()
         self.dim_u: int = self.ctrl_space.shape[0]
+        self.id = config.DYN
 
     def integrate_forward(
         self, state: np.ndarray, control: np.ndarray, **kwargs

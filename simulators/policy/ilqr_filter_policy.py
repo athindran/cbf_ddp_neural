@@ -9,7 +9,7 @@ import numpy as np
 from .ilqr_reachavoid_policy import iLQRReachAvoid
 from .ilqr_reachability_policy import iLQRReachability
 from .ilqr_policy import iLQR
-from .solver_utils import barrier_filter_linear, barrier_filter_quadratic, bicycle_linear_task_policy
+from .solver_utils import barrier_filter_linear, barrier_filter_quadratic, bicycle_linear_task_policy, pvtol_linear_task_policy
 from simulators.dynamics.base_dynamics import BaseDynamics
 from simulators.costs.base_margin import BaseMargin
 
@@ -54,6 +54,8 @@ class iLQRSafetyFilter(iLQR):
                 self.config,
                 self.rollout_dyn_2,
                 self.task_cost)
+        elif self.dyn.id ==  "PVTOL6D":
+            self.task_policy = pvtol_linear_task_policy
         else:
             self.task_policy = bicycle_linear_task_policy
         # Two ILQR solvers
@@ -78,12 +80,13 @@ class iLQRSafetyFilter(iLQR):
     ) -> np.ndarray:
 
         # Linear feedback policy
-        start_time = time.time()
         initial_state = np.array(kwargs['state'])
         stopping_ctrl = np.array([self.dyn.ctrl_space[0, 0], 0])
 
         if self.config.is_task_ilqr:
             task_ctrl, _ = self.task_policy.get_action(obs, None, **kwargs)
+        elif self.dyn.id ==  "PVTOL6D":
+            task_ctrl = self.task_policy(initial_state, self.dyn)
         else:
             task_ctrl = self.task_policy(initial_state)
 
@@ -133,7 +136,6 @@ class iLQRSafetyFilter(iLQR):
             solver_info_0['barrier_filter_steps'] = self.barrier_filter_steps
             if(solver_info_1['Vopt'] <= self.lr_threshold):
                 self.filter_steps += 1
-                solver_info_0['process_time'] = time.time() - start_time
                 solver_info_0['filter_steps'] = self.filter_steps
                 solver_info_0['resolve'] = True
                 solver_info_0['reinit_controls'] = jnp.zeros(
@@ -141,8 +143,11 @@ class iLQRSafetyFilter(iLQR):
                 # Warm start for next cycle
                 solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:,
                                                                                        0:self.N - 1].set(solver_info_0['controls'][:, 1:self.N])
-                solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(
-                    self.dyn.ctrl_space[0, 0])
+                if self.dyn.id ==  "PVTOL6D":
+                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 1].set(self.dyn.mass * self.dyn.g)
+                else:
+                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.ctrl_space[0, 0])
+
                 solver_info_0['mark_complete_filter'] = True
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = np.linalg.norm(
@@ -155,7 +160,6 @@ class iLQRSafetyFilter(iLQR):
                     return control_0 + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
             else:
                 solver_info_0['filter_steps'] = self.filter_steps
-                solver_info_0['process_time'] = time.time() - start_time
                 solver_info_0['resolve'] = True
                 solver_info_0['bootstrap_next_solution'] = solver_info_1
                 solver_info_0['reinit_controls'] = jnp.array(
@@ -164,7 +168,7 @@ class iLQRSafetyFilter(iLQR):
                     solver_info_1['states'])
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = 0
-                return task_ctrl + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
+                return task_ctrl, solver_info_0
         elif(self.filter_type == "CBF" or self.filter_type == "SoftCBF"):
             gamma = self.gamma
             cutoff = gamma * solver_info_0['Vopt']
@@ -258,7 +262,6 @@ class iLQRSafetyFilter(iLQR):
                     solver_info_0['mark_barrier_filter'] = True
                 solver_info_0['barrier_filter_steps'] = self.barrier_filter_steps
                 solver_info_0['filter_steps'] = self.filter_steps
-                solver_info_0['process_time'] = time.time() - start_time
                 solver_info_0['resolve'] = False
                 solver_info_0['bootstrap_next_solution'] = solver_info_1
                 solver_info_0['reinit_controls'] = jnp.array(
@@ -276,14 +279,15 @@ class iLQRSafetyFilter(iLQR):
         # Safe policy
         solver_info_0['barrier_filter_steps'] = self.barrier_filter_steps
         solver_info_0['filter_steps'] = self.filter_steps
-        solver_info_0['process_time'] = time.time() - start_time
         solver_info_0['resolve'] = True
         solver_info_0['num_iters'] = num_iters
         solver_info_0['reinit_controls'] = jnp.zeros((self.dim_u, self.N))
         solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 0:self.N - 1].set(
             solver_info_0['controls'][:, 1:self.N])
-        solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(
-            self.dyn.ctrl_space[0, 0])
+        if self.dyn.id ==  "PVTOL6D":
+            solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 1].set(self.dyn.mass * self.dyn.g)
+        else:
+            solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.ctrl_space[0, 0])
         solver_info_0['mark_complete_filter'] = True
         solver_info_0['deviation'] = np.linalg.norm(control_0 - task_ctrl)
         if solver_info_0['is_inside_target']:

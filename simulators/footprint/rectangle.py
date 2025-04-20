@@ -4,10 +4,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-class CircleFootprint:
+class RectangleFootprint:
 
     def __init__(
         self, center: Optional[np.ndarray] = None,
+        angle: Optional[np.ndarray] = None,
         ego_radius: float = 0
     ) -> None:
         if center is None:
@@ -15,11 +16,15 @@ class CircleFootprint:
         else:
             self.center = center.copy()
         self.ego_radius = ego_radius
+        self.angle = angle
 
     def set_center(self, center: Optional[np.ndarray] = None):
         self.center = center
+    
+    def set_angle(self, angle: Optional[np.ndarray] = None):
+        self.angle = angle
 
     def plot(self, ax, color='r', lw=1.5, alpha=1.):
-        ego_circle = plt.Circle(
-            [self.center[0], self.center[1]], self.ego_radius, alpha=0.4, color=color)
+        ego_circle = plt.Rectangle(
+            [self.center[0] - 0.05, self.center[1] - self.ego_radius], 0.1, 2*self.ego_radius, angle=self.angle, alpha=0.4, color=color)
         ax.add_patch(ego_circle)
