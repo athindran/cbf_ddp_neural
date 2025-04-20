@@ -6,5 +6,3 @@ TODO:
 
 1) Rename 'jerk' to 'action_fluctuation' -
 2) Box obstackes
-
-Reach out to arkumar[at]princeton.edu for more questions.
