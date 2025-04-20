@@ -3,7 +3,7 @@ from typing import Tuple, Any
 import numpy as np
 
 from functools import partial
-from jaxlib.xla_extension import DeviceArray
+from jaxlib.xla_extension import ArrayImpl as DeviceArray
 import jax
 from jax import numpy as jnp
 

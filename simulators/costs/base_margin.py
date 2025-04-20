@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Tuple, Optional
 from functools import partial
-from jaxlib.xla_extension import DeviceArray
+from jaxlib.xla_extension import ArrayImpl as DeviceArray
 import jax
 from jax import numpy as jnp
 
