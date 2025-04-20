@@ -7,16 +7,16 @@ import numpy as np
 
 import os
 
-def find_jerk(controls, time_delta):
-    x_jerk = np.abs(controls[1:, 0] - controls[0:-1, 0])
-    y_jerk = np.abs(controls[1:, 1] - controls[0:-1, 1])
-    x_jerk = np.divide(x_jerk, time_delta)
-    y_jerk = np.divide(y_jerk, time_delta)
-    mean_x_jerk = np.mean( x_jerk )
-    mean_y_jerk = np.mean( y_jerk )
-    std_x_jerk = np.std( x_jerk )
-    std_y_jerk = np.std( y_jerk )
-    return [mean_x_jerk, mean_y_jerk, std_x_jerk, std_y_jerk]
+def find_fluctuation(controls, time_delta):
+    x_fluctuation = np.abs(controls[1:, 0] - controls[0:-1, 0])
+    y_fluctuation = np.abs(controls[1:, 1] - controls[0:-1, 1])
+    x_fluctuation = np.divide(x_fluctuation, time_delta)
+    y_fluctuation = np.divide(y_fluctuation, time_delta)
+    mean_x_fluctuation = np.mean( x_fluctuation )
+    mean_y_fluctuation = np.mean( y_fluctuation )
+    std_x_fluctuation = np.std( x_fluctuation )
+    std_y_fluctuation = np.std( y_fluctuation )
+    return [mean_x_fluctuation, mean_y_fluctuation, std_x_fluctuation, std_y_fluctuation]
 
 def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
                      fig_folder="./", **kwargs):
@@ -748,10 +748,10 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     print("Reporting stats")
     for idx, controls_data in enumerate(plot_actions_list):
         print("Type: ", labellist[idx])
-        jerklist = find_jerk(controls_data, dt)
+        fluctuationlist = find_fluctuation(controls_data, dt)
         timelist = plot_times_list[idx]
-        print("Acceleration jerk: ", jerklist[0], " +- ", jerklist[2])
-        print("Steer jerk: ", jerklist[1], " +- ", jerklist[3])
+        print("Control 0 fluctuation: ", fluctuationlist[0], " +- ", fluctuationlist[2])
+        print("Control 1 fluctuation: ", fluctuationlist[1], " +- ", fluctuationlist[3])
         print("Total deviation: ", np.sum(plot_deviations_list[idx]))
         print("Process time: ", np.mean(timelist), " +- ", np.std(timelist))
 
@@ -1129,9 +1129,9 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     print("Reporting stats")
     for idx, controls_data in enumerate(plot_actions_list):
         print("Type: ", labellist[idx])
-        jerklist = find_jerk(controls_data, dt)
+        fluctuationlist = find_fluctuation(controls_data, dt)
         timelist = plot_times_list[idx]
-        print("Thrust X jerk: ", jerklist[0], " +- ", jerklist[2])
-        print("Thrust Y jerk: ", jerklist[1], " +- ", jerklist[3])
+        print("Thrust X fluctuation: ", fluctuationlist[0], " +- ", fluctuationlist[2])
+        print("Thrust Y fluctuation: ", fluctuationlist[1], " +- ", fluctuationlist[3])
         print("Total deviation: ", np.sum(plot_deviations_list[idx]))
         print("Process time: ", np.mean(timelist), " +- ", np.std(timelist))
