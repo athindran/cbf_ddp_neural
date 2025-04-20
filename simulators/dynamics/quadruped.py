@@ -1,8 +1,7 @@
-#@title Import MuJoCo, MJX, and Brax
 from datetime import datetime
 from etils import epath
 import functools
-from IPython.display import HTML
+from functools import partial
 from typing import Any, Dict, Sequence, Tuple, Union
 import os
 from ml_collections import config_dict
@@ -10,11 +9,11 @@ from ml_collections import config_dict
 
 import jax
 from jax import numpy as jp
+from jaxlib.xla_extension import ArrayImpl as DeviceArray
 import numpy as np
 from flax.training import orbax_utils
 from flax import struct
 from matplotlib import pyplot as plt
-import mediapy as media
 from orbax import checkpoint as ocp
 
 import mujoco
@@ -27,11 +26,9 @@ from brax.base import Base, Motion, Transform
 from brax.base import State as PipelineState
 from brax.envs.base import Env, PipelineEnv, State
 from brax.mjx.base import State as MjxState
-from brax.training.agents.ppo import train as ppo
-from brax.training.agents.ppo import networks as ppo_networks
 from brax.io import html, mjcf, model
 
-BARKOUR_ROOT_PATH = epath.Path('mujoco_menagerie/google_barkour_vb')
+BARKOUR_ROOT_PATH = epath.Path('/Users/athindranrameshkumar/Documents/Code/mujoco_menagerie/google_barkour_vb')
 
 def get_config():
     """Returns reward config for barkour quadruped environment."""
@@ -92,8 +89,8 @@ def get_config():
     return default_config
 
 
-class BarkourEnv(BaseDynamics, PipelineEnv):
-  """Environment for training the barkour quadruped joystick policy in MJX."""
+class BarkourEnv(PipelineEnv):
+    """Environment for training the barkour quadruped joystick policy in MJX."""
 
     def __init__(
       self,
@@ -121,8 +118,8 @@ class BarkourEnv(BaseDynamics, PipelineEnv):
         self.reward_config = get_config()
         # set custom from kwargs
         for k, v in kwargs.items():
-        if k.endswith('_scale'):
-            self.reward_config.rewards.scales[k[:-6]] = v
+            if k.endswith('_scale'):
+                self.reward_config.rewards.scales[k[:-6]] = v
 
         self._torso_idx = mujoco.mj_name2id(
             sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, 'torso'
@@ -203,9 +200,17 @@ class BarkourEnv(BaseDynamics, PipelineEnv):
         reward, done = jp.zeros(2)
         metrics = {'total_dist': 0.0}
         for k in state_info['rewards']:
-        metrics[k] = state_info['rewards'][k]
+            metrics[k] = state_info['rewards'][k]
         state = State(pipeline_state, obs, reward, done, metrics, state_info)  # pytype: disable=wrong-arg-types
         return state
+
+    @partial(jax.jit, static_argnames='self')
+    def integrate_forward(self, pipeline_state, action) -> jax.Array:
+        motor_targets = self._default_pose + action * self._action_scale
+        motor_targets = jp.clip(motor_targets, self.lowers, self.uppers)
+        pipeline_state = self.pipeline_step(pipeline_state, motor_targets)
+
+        return pipeline_state
   
     @partial(jax.jit, static_argnames='self')
     def step(self, state: State, action: jax.Array) -> State:  # pytype: disable=signature-mismatch
@@ -426,6 +431,25 @@ class BarkourEnv(BaseDynamics, PipelineEnv):
     @partial(jax.jit, static_argnames='self')
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done & (step < 500)
+
+    @partial(jax.jit, static_argnames='self')
+    def get_jacobian(
+        self, nominal_states: DeviceArray, nominal_controls: DeviceArray
+    ) -> Tuple[DeviceArray, DeviceArray]:
+        """
+        Returns the linearized 'A' and 'B' matrix of the ego vehicle around
+        nominal states and controls.
+        Args:
+            nominal_states (DeviceArray): states along the nominal trajectory.
+            nominal_controls (DeviceArray): controls along the trajectory.
+
+        Returns:
+            DeviceArray: the Jacobian of the dynamics w.r.t. the state.
+            DeviceArray: the Jacobian of the dynamics w.r.t. the control.
+        """
+        _jac = jax.jacfwd(self.integrate_forward, argnums=[0, 1])
+        jac = jax.jit(jax.vmap(_jac, in_axes=(1, 1), out_axes=(2, 2)))
+        return jac(nominal_states, nominal_controls)
 
     # def render(
     #   self, trajectory: List[base.State], camera: str | None = None,
