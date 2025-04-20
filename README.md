@@ -4,5 +4,5 @@ This is a repository for using CBF-DDP with soft minimum and maximum operators i
 
 TODO:
 
-1) Rename 'jerk' to 'action_fluctuation' -
-2) Box obstackes
+1) Rename 'jerk' to 'action_fluctuation' - DONE
+2) Box obstackes - TBD
