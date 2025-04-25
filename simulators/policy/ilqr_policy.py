@@ -4,27 +4,27 @@ import copy
 import numpy as np
 import jax
 from jax import numpy as jnp
-from jax import Array
-from simulators.brax.wrapper_env import WrappedBraxEnv
+from jaxlib.xla_extension import ArrayImpl as DeviceArray
 from functools import partial
 
-from simulators.policy.base_policy import BasePolicy
+from .base_policy import BasePolicy
+from simulators.dynamics.base_dynamics import BaseDynamics
 from simulators.costs.base_margin import BaseMargin
 
 
 class iLQR(BasePolicy):
 
     def __init__(
-        self, id: str, config, dyn: WrappedBraxEnv, cost: BaseMargin
+        self, id: str, config, dyn: BaseDynamics, cost: BaseMargin
     ) -> None:
         super().__init__(id, config)
         self.policy_type = "iLQR"
-        self.dyn = dyn
+        self.dyn = copy.deepcopy(dyn)
         self.cost = copy.deepcopy(cost)
 
         # iLQR parameters
-        self.dim_u = cost.dim_u
-        self.dim_x = cost.dim_x
+        self.dim_x = dyn.dim_x
+        self.dim_u = dyn.dim_u
         self.N = config.N
         self.max_iter = config.MAX_ITER
         self.tol = 1e-5  # ILQR update tolerance.
@@ -41,31 +41,35 @@ class iLQR(BasePolicy):
         # `controls` include control input at timestep N-1, which is a dummy
         # control of zeros.
         if controls is None:
-            controls = jnp.zeros((self.dim_u, self.N))
+            controls = np.zeros((self.dim_u, self.N))
+            if self.dyn.id == "PVTOL6D":
+                controls[1, :] = self.dyn.mass * self.dyn.g
+            controls = jnp.array(controls)
         else:
             assert controls.shape[1] == self.N
+            controls = jnp.array(controls)
 
         # Rolls out the nominal trajectory and gets the initial cost.
-        states, trimmed_states, controls = self.rollout_nominal(
-            state, controls
+        states, controls = self.rollout_nominal(
+            jnp.array(kwargs.get('state')), controls
         )
-        J = self.cost.get_traj_cost(trimmed_states, controls)
+        J = self.cost.get_traj_cost(states, controls)
 
         converged = False
         time0 = time.time()
-        for _ in range(self.max_iter):
+        for i in range(self.max_iter):
             # We need cost derivatives from 0 to N-1, but we only need dynamics
             # jacobian from 0 to N-2.
             c_x, c_u, c_xx, c_uu, c_ux = self.cost.get_derivatives(
-                trimmed_states, controls)
-            fx, fu = self.dyn.get_jacobian(trimmed_states[:, :-1], controls[:, :-1])
+                states, controls)
+            fx, fu = self.dyn.get_jacobian(states[:, :-1], controls[:, :-1])
             K_closed_loop, k_open_loop = self.backward_pass(
                 c_x=c_x, c_u=c_u, c_xx=c_xx, c_uu=c_uu, c_ux=c_ux, fx=fx, fu=fu
             )
             updated = False
             for alpha in self.alphas:
                 X_new, U_new, J_new = self.forward_pass(
-                    trimmed_states, controls, K_closed_loop, k_open_loop, alpha
+                    states, controls, K_closed_loop, k_open_loop, alpha
                 )
 
                 if J_new <= J:  # Improved!
@@ -103,11 +107,11 @@ class iLQR(BasePolicy):
 
     @partial(jax.jit, static_argnames='self')
     def forward_pass(
-        self, nominal_states: Array, nominal_controls: Array,
-        K_closed_loop: Array, k_open_loop: Array, alpha: float
-    ) -> Tuple[Array, Array, float]:
+        self, nominal_states: DeviceArray, nominal_controls: DeviceArray,
+        K_closed_loop: DeviceArray, k_open_loop: DeviceArray, alpha: float
+    ) -> Tuple[DeviceArray, DeviceArray, float]:
         # We seperate the rollout and cost explicitly since get_cost might rely on
-        # other information, such as dyn parameters (track), and is difficult for
+        # other information, such as env parameters (track), and is difficult for
         # jax to differentiate.
         X, U = self.rollout(
             nominal_states, nominal_controls, K_closed_loop, k_open_loop, alpha
@@ -117,9 +121,9 @@ class iLQR(BasePolicy):
 
     @partial(jax.jit, static_argnames='self')
     def rollout(
-        self, nominal_states: Array, nominal_controls: Array,
-        K_closed_loop: Array, k_open_loop: Array, alpha: float
-    ) -> Tuple[Array, Array]:
+        self, nominal_states: DeviceArray, nominal_controls: DeviceArray,
+        K_closed_loop: DeviceArray, k_open_loop: DeviceArray, alpha: float
+    ) -> Tuple[DeviceArray, DeviceArray]:
 
         @jax.jit
         def _rollout_step(i, args):
@@ -129,8 +133,7 @@ class iLQR(BasePolicy):
                                          i], (X[:, i] - nominal_states[:, i])
             )
             u = nominal_controls[:, i] + alpha * k_open_loop[:, i] + u_fb
-            u_clip = jnp.clip(u, min=-1, max=1)
-            x_nxt = self.dyn.step(X[:, i], u_clip)
+            x_nxt, u_clip = self.dyn.integrate_forward_jax(X[:, i], u)
             X = X.at[:, i + 1].set(x_nxt)
             U = U.at[:, i].set(u_clip)
             return X, U
@@ -144,48 +147,44 @@ class iLQR(BasePolicy):
 
     @partial(jax.jit, static_argnames='self')
     def rollout_nominal(
-        self, initial_state: Array, controls: Array
-    ) -> Tuple[Array, Array]:
+        self, initial_state: DeviceArray, controls: DeviceArray
+    ) -> Tuple[DeviceArray, DeviceArray]:
 
         @jax.jit
         def _rollout_nominal_step(i, args):
-            states, X, U = args
-            u_clip = jnp.clip(U[:, i], min=-1, max=1)
-            state_nxt = self.dyn.step(states[i], u_clip)
-            X = X.at[:, i + 1].set(self.dyn.get_trimmed_state( state_nxt ))
+            X, U = args
+            x_nxt, u_clip = self.dyn.integrate_forward_jax(X[:, i], U[:, i])
+            X = X.at[:, i + 1].set(x_nxt)
             U = U.at[:, i].set(u_clip)
-            states.append( state_nxt )
-            return states, X, U
-        
-        states = []
-        states.append( initial_state )
+            return X, U
+
         X = jnp.zeros((self.dim_x, self.N))
-        X = X.at[:, 0].set( self.dyn.get_trimmed_state( initial_state ) )
-        states, X, U = jax.lax.fori_loop(
-            0, self.N - 1, _rollout_nominal_step, (states, X, controls)
+        X = X.at[:, 0].set(initial_state)
+        X, U = jax.lax.fori_loop(
+            0, self.N - 1, _rollout_nominal_step, (X, controls)
         )
-        return states, X, U
+        return X, U
 
     @partial(jax.jit, static_argnames='self')
     def backward_pass(
-        self, c_x: Array, c_u: Array, c_xx: Array,
-        c_uu: Array, c_ux: Array, fx: Array, fu: Array
-    ) -> Tuple[Array, Array]:
+        self, c_x: DeviceArray, c_u: DeviceArray, c_xx: DeviceArray,
+        c_uu: DeviceArray, c_ux: DeviceArray, fx: DeviceArray, fu: DeviceArray
+    ) -> Tuple[DeviceArray, DeviceArray]:
         """
         Jitted backward pass looped computation.
 
         Args:
-            c_x (Array): (dim_x, N)
-            c_u (Array): (dim_u, N)
-            c_xx (Array): (dim_x, dim_x, N)
-            c_uu (Array): (dim_u, dim_u, N)
-            c_ux (Array): (dim_u, dim_x, N)
-            fx (Array): (dim_x, dim_x, N-1)
-            fu (Array): (dim_x, dim_u, N-1)
+            c_x (DeviceArray): (dim_x, N)
+            c_u (DeviceArray): (dim_u, N)
+            c_xx (DeviceArray): (dim_x, dim_x, N)
+            c_uu (DeviceArray): (dim_u, dim_u, N)
+            c_ux (DeviceArray): (dim_u, dim_x, N)
+            fx (DeviceArray): (dim_x, dim_x, N-1)
+            fu (DeviceArray): (dim_x, dim_u, N-1)
 
         Returns:
-            Ks (Array): gain matrices (dim_u, dim_x, N - 1)
-            ks (Array): gain vectors (dim_u, N - 1)
+            Ks (DeviceArray): gain matrices (dim_u, dim_x, N - 1)
+            ks (DeviceArray): gain vectors (dim_u, N - 1)
         """
 
         @jax.jit
