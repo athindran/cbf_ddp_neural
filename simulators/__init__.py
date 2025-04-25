@@ -3,7 +3,6 @@ from .config.utils import load_config
 from .agent import Agent
 
 from .base_single_env import BaseSingleEnv
-from .brax.wrapper_env import WrappedBraxEnv
 
 from .car.car_single import CarSingle5DEnv
 from .car.bicycle5d_margin import (
@@ -18,10 +17,8 @@ from .costs.base_margin import SoftBarrierEnvelope, BaseMargin
 from .costs.obs_margin import BoxObsMargin
 
 from .policy.base_policy import BasePolicy
-from .policy.linear_policy import LinearPolicy
 
 from .dynamics.bicycle5d import Bicycle5D
-from .dynamics.quadruped import BarkourEnv
 #from .pendulum.pendulum import Pendulum
 from .car.car_single import CarSingle5DEnv
 from .aerialV.pvtol_env import Pvtol6DEnv
