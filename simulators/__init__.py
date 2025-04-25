@@ -9,12 +9,18 @@ from .car.bicycle5d_margin import (
     BicycleReachAvoid5DMargin, Bicycle5DCost
 )
 
-from .costs.quadratic_penalty import QuadraticCost
+from .costs.quadratic_penalty import (
+    QuadraticCost, QuadraticControlCost, QuadraticStateCost
+)
 from .costs.half_space_margin import (
     UpperHalfMargin, LowerHalfMargin
 )
-from .costs.base_margin import SoftBarrierEnvelope, BaseMargin
-from .costs.obs_margin import BoxObsMargin
+from .costs.base_margin import (
+    SoftBarrierEnvelope, BaseMargin
+)
+from .costs.obs_margin import (
+    BoxObsMargin, CircleObsMargin
+)
 
 from .policy.base_policy import BasePolicy
 
