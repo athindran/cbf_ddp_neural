@@ -1,7 +1,7 @@
 import numpy as np
 import jax
 from jax import numpy as jnp
-from .base_policy import BasePolicy
+from simulators import BasePolicy
 from typing import Dict, Optional
 
 class LinearPolicy(BasePolicy):

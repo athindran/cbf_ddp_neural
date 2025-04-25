@@ -1,13 +1,13 @@
-from brax.training.agents.ppo import train as ppo
-from brax.io import model
-from brax import envs
-from brax_utils import WrappedBraxEnv
-from brax_utils import LinearPolicy
 import jax
 import jax.numpy as jnp
 import mediapy as media
 import sys
 import functools
+
+from brax.training.agents.ppo import train as ppo
+from brax.io import model
+from brax import envs
+from brax_utils import WrappedBraxEnv, LinearPolicy, ReacherRegularizedGoalCost
 
 sys.path.append(".")
 

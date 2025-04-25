@@ -4,9 +4,7 @@ from jax import Array
 import jax.numpy as jnp
 import jax
 
-from .base_margin import BaseMargin
-from .obs_margin import CircleObsMargin
-from .quadratic_penalty import QuadraticControlCost
+from simulators import BaseMargin, CircleObsMargin, QuadraticControlCost
 
 class ReacherGoalCost(BaseMargin):
     def __init__(self, dim_u: int, goal_spec: jnp.ndarray):
