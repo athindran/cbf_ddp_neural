@@ -84,13 +84,13 @@ class iLQRBrax(BasePolicy):
 
             # Terminates early if there is no update within alphas.
             if not updated:
-                print("Did not converge")
+                #print("Did not converge")
                 status = 2
                 break
 
             # Terminates early if the objective improvement is negligible.
             if converged:
-                print(f"Converged with cost {J}")
+                #print(f"Converged with cost {J}")
                 status = 1
                 break
         t_process = time.time() - time0

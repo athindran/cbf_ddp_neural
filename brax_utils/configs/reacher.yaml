@@ -1,5 +1,5 @@
 solver:
-  N: 45
+  N: 30
   MAX_ITER: 20
   # Line search options: 'baseline'.
   LINE_SEARCH: 'baseline'
