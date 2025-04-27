@@ -4,6 +4,8 @@ import jax.numpy as jnp
 import mediapy as media
 import sys
 import functools
+import os
+import numpy as np
 
 from brax.training.agents.ppo import train as ppo
 from brax.io import model
@@ -34,6 +36,9 @@ def main(seed: int, policy_type="neural"):
     rng = jax.random.PRNGKey(seed=seed)
     state = brax_env.reset(rng=rng)
     #print(f"State: {state}")
+    save_folder = f"./brax_videos/reacher/seed_{seed}"
+    if not os.path.exists(save_folder):
+      os.makedirs(save_folder, exist_ok=True)
 
     if policy_type=="neural":
       policy = get_neural_policy(env_name, backend)
@@ -46,7 +51,10 @@ def main(seed: int, policy_type="neural"):
 
     rollout = []
     controls_init = None
-    for _ in range(100):
+    T = 100
+    actions_to_sys = np.zeros((T, brax_env.dim_u))
+    gc_states_sys = np.zeros((T, brax_env.dim_x))
+    for idx in range(T):
       rollout.append(state.pipeline_state)
       if policy_type=="neural":
         act_rng, rng = jax.random.split(rng)
@@ -55,6 +63,8 @@ def main(seed: int, policy_type="neural"):
         act, solver_dict = policy.get_action(state, controls=controls_init)
         controls_init = jnp.array(solver_dict['controls'])
       state = brax_env.step(state, act)
+      actions_to_sys[idx] = np.array(act)
+      gc_states_sys[idx] = np.array(brax_env.get_generalized_coordinates(state))
 
       #print("action", act)
       # gc_from_state_grad, gc_from_action_grad = brax_env.get_generalized_coordinates_grad(state, act)
@@ -68,11 +78,17 @@ def main(seed: int, policy_type="neural"):
       #print(f"fingertip: {fingertip}, extracted fingertip: {obs[8:10] + obs[4:6]}")
       #print(f"State cost: {current_state_cost}")
 
+    # Log results for inspection.
     render_every = 2
-    media.write_video(f'./brax_videos/reacher_{seed}_{policy_type}.mp4',
+    media.write_video(os.path.join(save_folder, f'{policy_type}_policy.mp4'),
         brax_env.env.render(rollout[::render_every]),
         fps=1.0 / brax_env.env.dt / render_every)
+    brax_env.plot_states_and_controls(gc_states_sys, actions_to_sys, policy_type, save_folder)
+    save_dict = {'gc_states': gc_states_sys, 'actions': actions_to_sys}
+    np.save(os.path.join(save_folder, f'{policy_type}_save_data.npy'), save_dict)
 
 if __name__ == "__main__":
-    for seed in range(10):
-      main(seed, policy_type="ilqr")
+    for seed in range(5):
+      for policy_type in ["neural", "ilqr"]:
+        main(seed, policy_type=policy_type)
+
