@@ -10,6 +10,8 @@ class WrappedBraxEnv(ABC):
     def __init__(self, env_name, backend) -> None:
         self.env = envs.get_environment(env_name=env_name,
                            backend=backend)
+        self.dim_x = 8
+        self.dim_u = 2
     
     @partial(jax.jit, static_argnames='self')
     def step(self, state, action) -> jax.Array:
@@ -43,4 +45,11 @@ class WrappedBraxEnv(ABC):
     @partial(jax.jit, static_argnames='self')
     def _get_obs(self, pipeline_state: State) -> jax.Array:
         return self.env._get_obs(pipeline_state)
+
+    @partial(jax.jit, static_argnames='self')
+    def get_fingertip(self, generalized_coordinates: jax.Array) -> jax.Array:
+        fingertip = jnp.zeros((2,))
+        fingertip = fingertip.at[0].set(0.1*jnp.cos(generalized_coordinates[0]) + 0.11*jnp.cos(generalized_coordinates[0] + generalized_coordinates[1]))
+        fingertip = fingertip.at[1].set(0.1*jnp.sin(generalized_coordinates[0]) + 0.11*jnp.sin(generalized_coordinates[0] + generalized_coordinates[1]))
+        return fingertip
 
