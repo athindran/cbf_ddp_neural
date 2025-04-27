@@ -15,7 +15,7 @@ class WrappedBraxEnv(ABC):
         self.env = envs.get_environment(env_name=env_name,
                            backend=backend)
         if env_name=='reacher':
-            self.dim_x = 8
+            self.dim_x = 4
             self.dim_u = 2
         else:
             # Raise not implemented error.
@@ -28,7 +28,7 @@ class WrappedBraxEnv(ABC):
     
     @partial(jax.jit, static_argnames='self')
     def get_generalized_coordinates(self, state) -> jax.Array:
-        return jnp.concatenate([state.pipeline_state.q, state.pipeline_state.qd], axis=-1) 
+        return jnp.concatenate([state.pipeline_state.q[0:2], state.pipeline_state.qd[0:2]], axis=-1) 
 
     @partial(jax.jit, static_argnames=['self'])
     def step_generalized_coordinates(self, state, action):
@@ -40,12 +40,12 @@ class WrappedBraxEnv(ABC):
     def get_generalized_coordinates_grad(self, state, action):
         state_grad = jax.jacobian(self.step_generalized_coordinates, argnums=0)(state, action).pipeline_state
         action_grad = jax.jacobian(self.step_generalized_coordinates, argnums=1)(state, action)
-        return jnp.concatenate([state_grad.q, state_grad.qd], axis=-1), action_grad
+        return jnp.concatenate([state_grad.q[..., 0:2], state_grad.qd[..., 0:2]], axis=-1), action_grad
 
     @partial(jax.jit, static_argnames=['self'])
     def get_obs_grad(self, pipeline_state):
         state_grad = jax.jacobian(self._get_obs, argnums=0)(pipeline_state)
-        return jnp.concatenate([state_grad.q, state_grad.qd], axis=-1)
+        return jnp.concatenate([state_grad.q[..., 0:2], state_grad.qd[..., 0:2]], axis=-1)
 
     @partial(jax.jit, static_argnames='self')    
     def reset(self, rng) -> jax.Array:
@@ -62,21 +62,22 @@ class WrappedBraxEnv(ABC):
         fingertip = fingertip.at[1].set(0.1*jnp.sin(generalized_coordinates[0]) + 0.11*jnp.sin(generalized_coordinates[0] + generalized_coordinates[1]))
         return fingertip
 
-    def plot_states_and_controls(self, states, ctrls, policy_type, save_folder):
+    def plot_states_and_controls(self, states, ctrls, control_cycle_times, policy_type, save_folder):
         if(self.env_name == 'reacher'):
             fig, axes = plt.subplots(2, 2, figsize=(9, 6), sharex=True)
             axes[0, 0].plot(states[:, 0])
             axes[0, 0].set_ylabel('q0')
             axes[0, 1].plot(states[:, 1])
             axes[0, 1].set_ylabel('q1')
-            axes[1, 0].plot(states[:, 4])
+            axes[1, 0].plot(states[:, 2])
             axes[1, 0].set_ylabel('q0d')
-            axes[1, 1].plot(states[:, 5])
+            axes[1, 1].plot(states[:, 3])
             axes[1, 1].set_ylabel('q1d')
             axes[1, 0].set_xlabel('Timesteps')
             axes[1, 1].set_xlabel('Timesteps')
             fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=18)
             fig.savefig(os.path.join(save_folder, f'{policy_type}_states.png'))
+            plt.close()
 
             fig, axes = plt.subplots(1, 2, figsize=(9, 4))
             axes[0].plot(ctrls[:, 0])
@@ -87,4 +88,14 @@ class WrappedBraxEnv(ABC):
             axes[1].set_xlabel('Timesteps')
             fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=18)
             fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
+            plt.close()
+
+            fig = plt.figure(figsize=(5.5, 3.5))
+            ax = plt.gca()
+            ax.plot(control_cycle_times)
+            ax.set_ylabel('Cycle time(s)')
+            ax.set_xlabel('Timesteps')
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=18)
+            fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'))
+            plt.close()
 

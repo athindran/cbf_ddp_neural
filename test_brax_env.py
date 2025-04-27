@@ -6,6 +6,7 @@ import sys
 import functools
 import os
 import numpy as np
+import time
 
 from brax.training.agents.ppo import train as ppo
 from brax.io import model
@@ -42,25 +43,35 @@ def main(seed: int, policy_type="neural"):
 
     if policy_type=="neural":
       policy = get_neural_policy(env_name, backend)
+      # Warmup
+      act_rng, rng = jax.random.split(rng)
+      policy(state.obs, act_rng)
     elif policy_type=="ilqr":
       config = load_config('./brax_utils/configs/reacher.yaml')
       config_solver = config['solver']
-      cost = ReacherRegularizedGoalCost(dim_u=2, dim_x=8, center=brax_env._get_obs(state.pipeline_state)[4:6], 
+      cost = ReacherRegularizedGoalCost(dim_u=2, dim_x=4, center=brax_env._get_obs(state.pipeline_state)[4:6], 
                                           env=WrappedBraxEnv(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
       policy = iLQRBrax(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=cost, config=config_solver)
+      # Warmup
+      policy.get_action(state, controls=None)
 
     rollout = []
     controls_init = None
     T = 100
     actions_to_sys = np.zeros((T, brax_env.dim_u))
     gc_states_sys = np.zeros((T, brax_env.dim_x))
+    control_cycle_times = np.zeros((T, ))
     for idx in range(T):
       rollout.append(state.pipeline_state)
       if policy_type=="neural":
         act_rng, rng = jax.random.split(rng)
+        time0 = time.time()
         act, _ = policy(state.obs, act_rng)
+        control_cycle_times[idx] = time.time() - time0
       elif policy_type=="ilqr":
+        time0 = time.time()
         act, solver_dict = policy.get_action(state, controls=controls_init)
+        control_cycle_times[idx] = time.time() - time0
         controls_init = jnp.array(solver_dict['controls'])
       state = brax_env.step(state, act)
       actions_to_sys[idx] = np.array(act)
@@ -83,12 +94,13 @@ def main(seed: int, policy_type="neural"):
     media.write_video(os.path.join(save_folder, f'{policy_type}_policy.mp4'),
         brax_env.env.render(rollout[::render_every]),
         fps=1.0 / brax_env.env.dt / render_every)
-    brax_env.plot_states_and_controls(gc_states_sys, actions_to_sys, policy_type, save_folder)
+    brax_env.plot_states_and_controls(gc_states_sys, actions_to_sys, control_cycle_times, policy_type, save_folder)
     save_dict = {'gc_states': gc_states_sys, 'actions': actions_to_sys}
     np.save(os.path.join(save_folder, f'{policy_type}_save_data.npy'), save_dict)
 
 if __name__ == "__main__":
     for seed in range(5):
-      for policy_type in ["neural", "ilqr"]:
+      for policy_type in ["ilqr", "neural"]:
+        print(seed, policy_type)
         main(seed, policy_type=policy_type)
 
