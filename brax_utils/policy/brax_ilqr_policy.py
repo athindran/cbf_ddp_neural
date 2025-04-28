@@ -27,14 +27,14 @@ class iLQRBrax(BasePolicy):
         self.dim_u = brax_env.dim_u
         self.N = config.N
         self.max_iter = config.MAX_ITER
-        self.tol = 1e-5  # ILQR update tolerance.
+        self.tol = 1e-3  # ILQR update tolerance.
         self.eps = getattr(config, "EPS", 1e-6)
         # Stepsize scheduler.
         self.alphas = 0.5**(np.arange(30))
 
     def get_action(
         self, initial_state, controls: Optional[np.ndarray] = None,
-        agents_action: Optional[Dict] = None, **kwargs
+         **kwargs
     ) -> np.ndarray:
         status = 0
 

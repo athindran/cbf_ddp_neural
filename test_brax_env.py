@@ -11,7 +11,11 @@ import time
 from brax.training.agents.ppo import train as ppo
 from brax.io import model
 from brax import envs
-from brax_utils import WrappedBraxEnv, ReacherRegularizedGoalCost, iLQRBrax
+from brax_utils import ( WrappedBraxEnv, 
+      ReacherRegularizedGoalCost, 
+      iLQRBrax, 
+      iLQRBraxReachability, 
+      ReacherReachabilityMargin )
 
 from simulators import load_config
 sys.path.append(".")
@@ -46,22 +50,36 @@ def main(seed: int, policy_type="neural"):
       # Warmup
       act_rng, rng = jax.random.split(rng)
       policy(state.obs, act_rng)
+      T = 100
     elif policy_type=="ilqr":
       config = load_config('./brax_utils/configs/reacher.yaml')
       config_solver = config['solver']
-      cost = ReacherRegularizedGoalCost(dim_u=2, dim_x=4, center=brax_env._get_obs(state.pipeline_state)[4:6], 
+      cost = ReacherRegularizedGoalCost(center=brax_env._get_obs(state.pipeline_state)[4:6], 
                                           env=WrappedBraxEnv(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
       policy = iLQRBrax(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=cost, config=config_solver)
       # Warmup
       policy.get_action(state, controls=None)
+      T = config_solver.MAX_ITER_RECEDING
+    elif policy_type=="ilqr_reachability":
+      config = load_config('./brax_utils/configs/reacher.yaml')
+      config_solver = config['solver']
+      config_cost = config['cost']
+      config_cost.N = config_solver.N
+      # cost = ReacherRegularizedGoalCost(center=brax_env._get_obs(state.pipeline_state)[4:6], 
+      #                                     env=WrappedBraxEnv(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
+      reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+      policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      # Warmup
+      policy.get_action(state, controls=None)
+      T = config_solver.MAX_ITER_RECEDING
 
     rollout = []
-    controls_init = None
-    T = 100
+    controls_init = None    
     actions_to_sys = np.zeros((T, brax_env.dim_u))
     gc_states_sys = np.zeros((T, brax_env.dim_x))
     control_cycle_times = np.zeros((T, ))
     for idx in range(T):
+      #print(idx)
       rollout.append(state.pipeline_state)
       if policy_type=="neural":
         act_rng, rng = jax.random.split(rng)
@@ -73,6 +91,12 @@ def main(seed: int, policy_type="neural"):
         act, solver_dict = policy.get_action(state, controls=controls_init)
         control_cycle_times[idx] = time.time() - time0
         controls_init = jnp.array(solver_dict['controls'])
+      elif policy_type=="ilqr_reachability":
+        time0 = time.time()
+        act, solver_dict = policy.get_action(state, controls=controls_init)
+        control_cycle_times[idx] = time.time() - time0
+        controls_init = jnp.array(solver_dict['reinit_controls'])
+
       state = brax_env.step(state, act)
       actions_to_sys[idx] = np.array(act)
       gc_states_sys[idx] = np.array(brax_env.get_generalized_coordinates(state))
@@ -100,7 +124,7 @@ def main(seed: int, policy_type="neural"):
 
 if __name__ == "__main__":
     for seed in range(5):
-      for policy_type in ["ilqr", "neural"]:
+      for policy_type in ["ilqr_reachability", "ilqr", "neural"]:
         print(seed, policy_type)
         main(seed, policy_type=policy_type)
 
