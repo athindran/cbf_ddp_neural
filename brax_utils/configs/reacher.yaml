@@ -4,12 +4,12 @@ cost:
   # SAFETY COST PARAM
   W_1: 0.05
   W_2: 0.05
-  MAX_ANGULAR_VELOCITY: [2.0, 2.0]
+  MAX_ANGULAR_VELOCITY: [11.0, 11.0]
   SMOOTHING_TEMP: 2.0
 
 solver:
   N: 20
-  MAX_ITER: 50
+  MAX_ITER: 20
   MAX_ITER_RECEDING: 100
   # Line search options: 'baseline'.
   # Baseline seems to be good enough for most cases.

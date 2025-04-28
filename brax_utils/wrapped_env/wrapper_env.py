@@ -62,7 +62,13 @@ class WrappedBraxEnv(ABC):
         fingertip = fingertip.at[1].set(0.1*jnp.sin(generalized_coordinates[0]) + 0.11*jnp.sin(generalized_coordinates[0] + generalized_coordinates[1]))
         return fingertip
 
-    def plot_states_and_controls(self, states, ctrls, control_cycle_times, policy_type, save_folder):
+    def plot_states_and_controls(self, save_dict, save_folder):
+        states = save_dict['gc_states']
+        ctrls = save_dict['actions']
+        control_cycle_times = save_dict['process_times']
+        values = save_dict['values']
+        policy_type = save_dict['policy_type']
+
         if(self.env_name == 'reacher'):
             fig, axes = plt.subplots(2, 2, figsize=(9, 6), sharex=True)
             axes[0, 0].plot(states[:, 0])
@@ -75,7 +81,7 @@ class WrappedBraxEnv(ABC):
             axes[1, 1].set_ylabel('q1d')
             axes[1, 0].set_xlabel('Timesteps')
             axes[1, 1].set_xlabel('Timesteps')
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=18)
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
             fig.savefig(os.path.join(save_folder, f'{policy_type}_states.png'))
             plt.close()
 
@@ -86,7 +92,7 @@ class WrappedBraxEnv(ABC):
             axes[1].plot(ctrls[:, 1])
             axes[1].set_ylabel('Action 1')
             axes[1].set_xlabel('Timesteps')
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=18)
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
             fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
             plt.close()
 
@@ -95,7 +101,16 @@ class WrappedBraxEnv(ABC):
             ax.plot(control_cycle_times)
             ax.set_ylabel('Cycle time(s)')
             ax.set_xlabel('Timesteps')
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=18)
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
             fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'))
+            plt.close()
+
+            fig = plt.figure(figsize=(5.5, 3.5))
+            ax = plt.gca()
+            ax.plot(values)
+            ax.set_ylabel('Reachability value')
+            ax.set_xlabel('Timesteps')
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+            fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'))
             plt.close()
 

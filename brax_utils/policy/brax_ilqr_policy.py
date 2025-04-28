@@ -159,10 +159,11 @@ class iLQRBrax(BasePolicy):
         @jax.jit
         def _rollout_nominal_step(i, args):
             X, U, fx, fu, state_prev = args
-            state_nxt = self.brax_env.step(state_prev, U[:, i])
+            u_clip = jnp.clip(U[:, i], min=jnp.array([-1.0, -1.0]), max=jnp.array([1.0, 1.0]))
+            state_nxt = self.brax_env.step(state_prev, u_clip)
             state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(state_prev, U[:, i])
             X = X.at[:, i + 1].set(self.brax_env.get_generalized_coordinates(state_nxt))
-            #U = U.at[:, i].set(u_clip)
+            U = U.at[:, i].set(u_clip)
             fx = fx.at[:, :, i].set(state_grad)
             fu = fu.at[:, :, i].set(action_grad)
             return X, U, fx, fu, state_nxt

@@ -15,8 +15,8 @@ class iLQRBraxReachability(iLQRBrax):
       self, initial_state, controls: Optional[np.ndarray] = None, **kwargs
   ) -> np.ndarray:
     status = 0
-    self.tol = 1e-3
-    self.min_alpha = 1e-15
+    self.tol = 1e-2
+    self.min_alpha = 1e-12
     # `controls` include control input at timestep N-1, which is a dummy
     # control of zeros.
     if controls is None:
@@ -135,7 +135,7 @@ class iLQRBraxReachability(iLQRBrax):
     critical = jnp.zeros(shape=(self.N,), dtype=bool)
     critical = critical.at[self.N - 1].set(True)
     critical, reachable_margin = jax.lax.fori_loop(
-        1, self.N - 1, critical_pt, (critical, failure_margins[-1])
+        1, self.N, critical_pt, (critical, failure_margins[-1])
     )  # backward until timestep 1
     return critical, reachable_margin
 

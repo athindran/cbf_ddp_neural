@@ -100,12 +100,7 @@ class ReacherConstraintCost(BaseMargin):
         super().__init__()
         self.dim_x = env.dim_x
         self.dim_u = env.dim_u
-        max_angular_velocity = config.MAX_ANGULAR_VELOCITY
-        self.q0d_lower_cost = LowerHalfMargin(value=-1 * max_angular_velocity[0], buffer=0.0, dim=2)
-        self.q1d_lower_cost = LowerHalfMargin(value=-1 * max_angular_velocity[1], buffer=0.0, dim=3)
-        self.q0d_upper_cost = UpperHalfMargin(value=max_angular_velocity[0], buffer=0.0, dim=2)
-        self.q1d_upper_cost = UpperHalfMargin(value=max_angular_velocity[1], buffer=0.0, dim=3)
-        self.kappa = config.SMOOTHING_TEMP
+        self.max_angular_velocity = config.MAX_ANGULAR_VELOCITY
 
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
@@ -119,55 +114,9 @@ class ReacherConstraintCost(BaseMargin):
         Returns:
             Array: scalar.
         """
-        # cost = jnp.inf
-        # cost = jnp.minimum(cost, state[2]**2 - self.max_angular_velocity_squared[0])
-        # cost = jnp.minimum(cost, state[3]**2 - self.max_angular_velocity_squared[1])
-        cost = 0.0
-        cost += jnp.exp(-1 * self.kappa * self.q0d_lower_cost.get_stage_margin(
-                state, ctrl
-            ))
-
-        cost += jnp.exp(-1 * self.kappa * self.q1d_lower_cost.get_stage_margin(
-                state, ctrl
-            ))
-
-        cost += jnp.exp(-1 * self.kappa * self.q0d_upper_cost.get_stage_margin(
-                state, ctrl
-            ))
-
-        cost += jnp.exp(-1 * self.kappa * self.q1d_upper_cost.get_stage_margin(
-                state, ctrl
-            ))
-
-        cost = -jnp.log(cost)/self.kappa
-
-        # cost = jnp.minimum(
-        #     cost,
-        #     self.q0d_lower_cost.get_stage_margin(
-        #         state, ctrl
-        #     )
-        # )
-
-        # cost = jnp.minimum(
-        #     cost,
-        #     self.q1d_lower_cost.get_stage_margin(
-        #         state, ctrl
-        #     )
-        # )
-
-        # cost = jnp.minimum(
-        #     cost,
-        #     self.q0d_upper_cost.get_stage_margin(
-        #         state, ctrl
-        #     )
-        # )
-
-        # cost = jnp.minimum(
-        #     cost,
-        #     self.q1d_upper_cost.get_stage_margin(
-        #         state, ctrl
-        #     )
-        # )
+        cost = jnp.inf
+        cost = jnp.minimum(cost, self.max_angular_velocity[0]**2 - state[2]**2)
+        cost = jnp.minimum(cost, self.max_angular_velocity[1]**2 - state[3]**2)
 
         return cost
 

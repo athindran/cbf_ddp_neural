@@ -72,14 +72,28 @@ def main(seed: int, policy_type="neural"):
       # Warmup
       policy.get_action(state, controls=None)
       T = config_solver.MAX_ITER_RECEDING
+    elif policy_type=="ilqr_filter_with_neural_policy":
+      config = load_config('./brax_utils/configs/reacher.yaml')
+      config_solver = config['solver']
+      config_cost = config['cost']
+      config_cost.N = config_solver.N
+      reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+      safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      task_policy = get_neural_policy(env_name, backend)
+      # Warmup
+      act_rng, rng = jax.random.split(rng)
+      task_policy(state.obs, act_rng)
+      safe_policy.get_action(state, controls=None)
+      T = config_solver.MAX_ITER_RECEDING
 
     rollout = []
     controls_init = None    
     actions_to_sys = np.zeros((T, brax_env.dim_u))
     gc_states_sys = np.zeros((T, brax_env.dim_x))
+    values_sys = np.zeros((T,))
     control_cycle_times = np.zeros((T, ))
     for idx in range(T):
-      #print(idx)
+      print(f"Starting time {idx}")
       rollout.append(state.pipeline_state)
       if policy_type=="neural":
         act_rng, rng = jax.random.split(rng)
@@ -96,10 +110,21 @@ def main(seed: int, policy_type="neural"):
         act, solver_dict = policy.get_action(state, controls=controls_init)
         control_cycle_times[idx] = time.time() - time0
         controls_init = jnp.array(solver_dict['reinit_controls'])
+      elif policy_type=="ilqr_filter_with_neural_policy":
+        time0 = time.time()
+        _, solver_dict = safe_policy.get_action(state, controls=controls_init)
+        act_rng, rng = jax.random.split(rng)
+        act, _ = task_policy(state.obs, act_rng)
+        control_cycle_times[idx] = time.time() - time0
+        controls_init = jnp.array(solver_dict['reinit_controls'])
+        values_sys[idx] = solver_dict['marginopt']
+        #print(f"value: {solver_dict['marginopt']}")
+        #print(f"Gc coord: {brax_env.get_generalized_coordinates(state)}")
 
       state = brax_env.step(state, act)
       actions_to_sys[idx] = np.array(act)
       gc_states_sys[idx] = np.array(brax_env.get_generalized_coordinates(state))
+      print(f"Completed time {idx} with {control_cycle_times[idx]}s  control time")
 
       #print("action", act)
       # gc_from_state_grad, gc_from_action_grad = brax_env.get_generalized_coordinates_grad(state, act)
@@ -118,13 +143,15 @@ def main(seed: int, policy_type="neural"):
     media.write_video(os.path.join(save_folder, f'{policy_type}_policy.mp4'),
         brax_env.env.render(rollout[::render_every]),
         fps=1.0 / brax_env.env.dt / render_every)
-    brax_env.plot_states_and_controls(gc_states_sys, actions_to_sys, control_cycle_times, policy_type, save_folder)
-    save_dict = {'gc_states': gc_states_sys, 'actions': actions_to_sys}
+    save_dict = {'policy_type': policy_type,  'gc_states': gc_states_sys, 
+                  'actions': actions_to_sys, 'process_times': control_cycle_times,
+                  'values': values_sys}
+    brax_env.plot_states_and_controls(save_dict, save_folder)
     np.save(os.path.join(save_folder, f'{policy_type}_save_data.npy'), save_dict)
 
 if __name__ == "__main__":
     for seed in range(5):
-      for policy_type in ["ilqr_reachability", "ilqr", "neural"]:
+      for policy_type in ["ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
         main(seed, policy_type=policy_type)
 
