@@ -5,4 +5,5 @@ This is a repository for using CBF-DDP with soft minimum and maximum operators i
 TODO:
 
 1) Rename 'jerk' to 'action_fluctuation' - DONE
-2) Box obstackes - TBD
+2) The `ilqr_filter_policy.py` and `base_single_env.py` needs urgent refactoring.
+3) Box obstackes - TBD
