@@ -736,10 +736,10 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     # ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
-    fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
+    # fig.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
     fig.savefig(
             plot_folder + tag + str(hide_label) + "_jax.png", dpi=200, 
             bbox_inches='tight', transparent=hide_label
@@ -1117,10 +1117,10 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     # ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
-    fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
+    # fig.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
     fig.savefig(
             plot_folder + tag + str(hide_label) + "_jax.png", dpi=200, 
             bbox_inches='tight', transparent=hide_label
