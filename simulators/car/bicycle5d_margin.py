@@ -796,7 +796,7 @@ class Bicycle5DSoftConstraintMargin(BaseMargin):
 
 class BicycleReachAvoid5DMargin(BaseMargin):
 
-    def __init__(self, config, plan_dyn, filter_type='CBF'):
+    def __init__(self, config, plan_dyn, filter_type):
         super().__init__()
         # Removing the square
         if filter_type == 'SoftCBF' or filter_type=='SoftLR':

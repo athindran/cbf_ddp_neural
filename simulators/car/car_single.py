@@ -29,12 +29,13 @@ class CarSingle5DEnv(BaseSingleEnv):
         self.obsc_type = config_env.OBSC_TYPE
 
         self.cost_type = getattr(config_constraint, "COST_TYPE", "Lagrange")
+        filter_type = getattr(config_agent, "FILTER_TYPE", "CBF")
         if self.cost_type == "Reachavoid":
             self.cost = BicycleReachAvoid5DMargin(
-                config_constraint, self.agent.dyn)
+                config_constraint, self.agent.dyn, filter_type)
         elif self.cost_type == "Reachability":
             self.cost = BicycleReachAvoid5DMargin(
-                config_constraint, self.agent.dyn)
+                config_constraint, self.agent.dyn, filter_type)
 
         self.g_x_fail = config_env.G_X_FAIL
 

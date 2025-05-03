@@ -20,8 +20,9 @@ class Pvtol6DEnv(BaseSingleEnv):
         self.obsc_type = config_env.OBSC_TYPE
 
         self.cost_type = getattr(config_constraint, "COST_TYPE", "Lagrange")
+        filter_type = getattr(config_agent, "FILTER_TYPE", "CBF")
         self.cost = PvtolReachAvoid6DMargin(
-            config_constraint, self.agent.dyn)
+            config_constraint, self.agent.dyn, filter_type)
 
         # Visualization.
         x_min, y_min =  -1 * config_env.WIDTH_RIGHT, -1 * config_env.HEIGHT_BOTTOM
