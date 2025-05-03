@@ -29,7 +29,6 @@ def main(config_file, filter_type, is_task_ilqr):
     config = load_config(config_file)
     config_env = config['environment']
     config_agent = config['agent']
-    is_task_ilqr = True
     config_agent.is_task_ilqr = is_task_ilqr
 
     config_solver = config['solver']
