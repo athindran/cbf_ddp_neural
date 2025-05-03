@@ -227,23 +227,23 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr):
             config_solver.OUT_FOLDER,
             'log.txt'))
 
-    config_current_cost = copy.deepcopy(config_ilqr_cost)
-    if 'LR' in filter_type:
-        config_current_cost.W_ACCEL = 1e-4
-        config_current_cost.W_OMEGA = 1e-4
-    config_current_cost.TRACK_WIDTH_RIGHT = road_boundary
-    config_current_cost.TRACK_WIDTH_LEFT = road_boundary
-    env.visual_extent[2] = -road_boundary
-    env.visual_extent[3] = road_boundary
-    cost = BicycleReachAvoid5DMargin(
-        config_current_cost, copy.deepcopy(
-            env.agent.dyn), filter_type=filter_type)
-    env.cost = cost
-    env.agent.init_policy(
-        policy_type=policy_type,
-        config=config_solver,
-        cost=cost,
-        task_cost=task_cost)
+    # config_current_cost = copy.deepcopy(config_ilqr_cost)
+    # if 'LR' in filter_type:
+    #     config_current_cost.W_ACCEL = 1e-4
+    #     config_current_cost.W_OMEGA = 1e-4
+    # config_current_cost.TRACK_WIDTH_RIGHT = road_boundary
+    # config_current_cost.TRACK_WIDTH_LEFT = road_boundary
+    # env.visual_extent[2] = -road_boundary
+    # env.visual_extent[3] = road_boundary
+    # cost = BicycleReachAvoid5DMargin(
+    #     config_current_cost, copy.deepcopy(
+    #         env.agent.dyn), filter_type=filter_type)
+    # env.cost = cost
+    # env.agent.init_policy(
+    #     policy_type=policy_type,
+    #     config=config_solver,
+    #     cost=cost,
+    #     task_cost=task_cost)
     # Warms up jit again
     env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
 
