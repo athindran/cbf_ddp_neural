@@ -29,6 +29,8 @@ def main(config_file, filter_type, is_task_ilqr):
     config = load_config(config_file)
     config_env = config['environment']
     config_agent = config['agent']
+    config_agent.is_task_ilqr = is_task_ilqr
+
     config_solver = config['solver']
 
     # Hacks to get information everywhere.
@@ -37,7 +39,7 @@ def main(config_file, filter_type, is_task_ilqr):
     config_agent.FILTER_TYPE = filter_type
 
     plot_tag = config_env.tag
-    if config_solver.is_task_ilqr:
+    if config_agent.is_task_ilqr:
         plot_tag += '_ilqrtask_'
     else:
         plot_tag += '_naivetask_'
@@ -106,7 +108,7 @@ def main(config_file, filter_type, is_task_ilqr):
 
     # region: Runs iLQR
     # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
     #env.report()
     ## ------------------------------------ Evaluation starts -------------------------------------------
     # Callback after each timestep for plotting and summarizing evaluation
@@ -191,7 +193,7 @@ def main(config_file, filter_type, is_task_ilqr):
     out_folder = config_solver.OUT_FOLDER
 
     # Naive task is not compatible with current configuration.
-    if not config_solver.is_task_ilqr:
+    if not config_agent.is_task_ilqr:
         out_folder = os.path.join(out_folder, "naivetask")
 
     current_out_folder = os.path.join(out_folder, filter_type)

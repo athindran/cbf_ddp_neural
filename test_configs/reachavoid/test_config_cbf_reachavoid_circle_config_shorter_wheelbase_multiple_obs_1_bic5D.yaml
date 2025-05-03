@@ -81,11 +81,11 @@ solver:
   LINE_SEARCH: 'baseline'
   # Filter options: 'none', 'LR', 'CBF'
   FILTER_TYPE: 'CBF'
-  CBF_TYPE: 'quadratic'
+  CONSTRAINT_TYPE: 'quadratic'
   CBF_GAMMA: 0.99
   SOFT_CBF_GAMMA: 0.99
   LR_THRESHOLD: 0.0
-  OUT_FOLDER: exps_may/ilqr/bic5D/reachavoid_experiment_shorter_wheelbase_mulobs_config1/
+  OUT_FOLDER: exps/ilqr/bic5D/reachavoid_experiment_shorter_wheelbase_mulobs_config1/
   DEVICE: cpu
   FIG_SIZE_X: 8
   FIG_SIZE_Y: 2.0
