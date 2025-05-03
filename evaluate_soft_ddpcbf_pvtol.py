@@ -75,11 +75,11 @@ def main(config_file, filter_type, is_task_ilqr):
             env.cost = cost  # ! hacky
         else:
             policy_type = "iLQRSafetyFilter"
-            cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             task_cost = Pvtol6DCost(
                 config_ilqr_cost, copy.deepcopy(
                     env.agent.dyn))
+            cost = PvtolReachAvoid6DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             env.cost = cost  # ! hacky
     # Not supported
     elif config_cost.COST_TYPE == "Reachability":
@@ -90,11 +90,11 @@ def main(config_file, filter_type, is_task_ilqr):
             env.cost = cost  # ! hacky
         else:
             policy_type = "iLQRSafetyFilter"
-            cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             task_cost = Pvtol6DCost(
                 config_ilqr_cost, copy.deepcopy(
                     env.agent.dyn))
+            cost = PvtolReachAvoid6DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             env.cost = cost
 
     env.agent.init_policy(
@@ -107,7 +107,7 @@ def main(config_file, filter_type, is_task_ilqr):
     # region: Runs iLQR
     # Warms up jit
     env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
-    env.report()
+    #env.report()
     ## ------------------------------------ Evaluation starts -------------------------------------------
     # Callback after each timestep for plotting and summarizing evaluation
     def rollout_step_callback(
@@ -214,22 +214,22 @@ def main(config_file, filter_type, is_task_ilqr):
             config_solver.OUT_FOLDER,
             'log.txt'))
 
-    config_current_cost = copy.deepcopy(config_ilqr_cost)
-    if 'LR' in filter_type:
-        config_current_cost.W_1 = 1e-4
-        config_current_cost.W_2 = 1e-4
+    # config_current_cost = copy.deepcopy(config_ilqr_cost)
+    # if 'LR' in filter_type:
+    #     config_current_cost.W_1 = 1e-4
+    #     config_current_cost.W_2 = 1e-4
 
     # Warmup again
-    cost = PvtolReachAvoid6DMargin(
-                config_current_cost, copy.deepcopy(
-                    env.agent.dyn), filter_type=filter_type)
-    env.cost = cost
-    env.agent.init_policy(
-        policy_type=policy_type,
-        config=config_solver,
-        cost=cost,
-        task_cost=task_cost)
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    # cost = PvtolReachAvoid6DMargin(
+    #             config_current_cost, copy.deepcopy(
+    #                 env.agent.dyn), filter_type=filter_type)
+    # env.cost = cost
+    # env.agent.init_policy(
+    #     policy_type=policy_type,
+    #     config=config_solver,
+    #     cost=cost,
+    #     task_cost=task_cost)
+    #env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
 
     nominal_states, result, traj_info = env.simulate_one_trajectory(
         T_rollout=max_iter_receding, end_criterion=end_criterion,
@@ -274,7 +274,7 @@ if __name__ == "__main__":
     parser.set_defaults(naive_task=False)
 
     args = parser.parse_args()
-    is_task_ilqr = False
+    is_task_ilqr = True
     out_folder, plot_tag, config_agent = main(args.config_file, filter_type='SoftCBF', is_task_ilqr=is_task_ilqr)
     out_folder, plot_tag, config_agent = main(args.config_file, filter_type='CBF', is_task_ilqr=is_task_ilqr)
 
