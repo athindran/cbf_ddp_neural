@@ -109,7 +109,7 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr):
     config_env = config['environment']
     config_agent = config['agent']
     config_solver = config['solver']
-    config_solver.is_task_ilqr = is_task_ilqr
+    config_agent.is_task_ilqr = is_task_ilqr
     config_solver.FILTER_TYPE = filter_type
     config_agent.FILTER_TYPE = filter_type
     config_cost = config['cost']
@@ -184,7 +184,7 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr):
 
     # region: Runs iLQR
     # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
     env.report()
     ## ------------------------------------ Evaluation starts -------------------------------------------
     end_criterion = "failure"
@@ -245,7 +245,7 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr):
         cost=cost,
         task_cost=task_cost)
     # Warms up jit again
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
 
     nominal_states, result, traj_info = env.simulate_one_trajectory(
         T_rollout=max_iter_receding, end_criterion=end_criterion,
