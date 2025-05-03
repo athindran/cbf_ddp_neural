@@ -343,7 +343,7 @@ def make_pvtol_animation_plots(env, state_history, solver_info, safety_plan, con
 
 def make_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder="./"):
-    if env.agent.dyn.id == "Bicycle5D" or env.agent.dyn.id == "Bicycle6D":
+    if env.agent.dyn.id == "Bicycle4D" or env.agent.dyn.id == "Bicycle5D":
         make_bic_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder)
     elif env.agent.dyn.id == "PVTOL6D":
