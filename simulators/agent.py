@@ -18,7 +18,7 @@ from .policy.base_policy import BasePolicy
 from .policy.ilqr_policy import iLQR
 from .policy.ilqr_filter_policy import iLQRSafetyFilter
 from .policy.ilqr_reachavoid_policy import iLQRReachAvoid
-
+from .policy.manual_task_policies import bicycle_linear_task_policy, pvtol_linear_task_policy
 
 class Agent:
     """A basic unit in our environments.
@@ -30,6 +30,7 @@ class Agent:
     """
     policy: Optional[BasePolicy]
     safety_policy: Optional[BasePolicy]
+    task_policy: Optional[BasePolicy]
     ego_observable: Optional[List]
     agents_policy: Dict[str, BasePolicy]
     agents_order: Optional[List]
@@ -57,10 +58,12 @@ class Agent:
         # Policy should be initialized by `init_policy()`.
         self.policy = None
         self.safety_policy = None
+        self.task_policy = None
         self.id: str = config.AGENT_ID
         self.ego_observable = None
         self.agents_policy = {}
         self.agents_order = None
+        self.is_task_ilqr = getattr(config, 'is_task_ilqr', False)
 
     def integrate_forward(
         self, state: np.ndarray, control: np.ndarray = None
@@ -105,7 +108,8 @@ class Agent:
 
     def get_action(
         self, obs: np.ndarray,
-        agents_action: Optional[Dict[str, np.ndarray]] = None, **kwargs
+        agents_action: Optional[Dict[str, np.ndarray]] = None,
+        warmup: bool = False, **kwargs
     ) -> Tuple[np.ndarray, dict]:
         """Gets the action to execute.
 
@@ -127,9 +131,22 @@ class Agent:
         else:
             _action_dict = {}
 
-        _action, _solver_info = self.policy.get_action(  # Proposed action.
-            obs=obs, agents_action=agents_action, **kwargs
-        )
+        if self.policy_type == "iLQRSafetyFilter":
+            # Execute task control
+            if self.is_task_ilqr:
+                task_ctrl, _ = self.task_policy.get_action(obs=obs, controls=None, state=kwargs['state'], warmup=warmup)
+            elif self.dyn.id ==  "PVTOL6D":
+                task_ctrl = self.task_policy(obs, self.dyn)
+            else:
+                task_ctrl = self.task_policy(obs)
+            # Filter to safe control
+            _action, _solver_info = self.safety_policy.get_action(  # Proposed action.
+                state=kwargs['state'], obs=obs, task_ctrl=task_ctrl, warmup=warmup
+            )
+        else:
+            _action, _solver_info = self.policy.get_action(  # Proposed action.
+                obs=obs, agents_action=agents_action, **kwargs
+            )
         _action_dict[self.id] = _action
 
         return _action, _solver_info
@@ -137,15 +154,28 @@ class Agent:
     def init_policy(
         self, policy_type: str, config, cost: Optional[BaseMargin] = None, **kwargs
     ):
+        self.policy_type = policy_type
+
         if policy_type == "iLQR":
             self.policy = iLQR(self.id, config, self.dyn, cost, **kwargs)
         elif policy_type == "iLQRReachAvoid":
             self.policy = iLQRReachAvoid(
                 self.id, config, self.dyn, cost, **kwargs
             )
-        elif policy_type == "iLQRSafetyFilter":
-            self.policy = iLQRSafetyFilter(
-                self.id, config, self.dyn, cost, **kwargs
+        elif policy_type == "iLQRSafetyFilter":            
+            if self.is_task_ilqr:
+                self.task_policy = iLQR(
+                    self.id,
+                    config,
+                    self.dyn,
+                    kwargs["task_cost"])
+            elif self.dyn.id ==  "PVTOL6D":
+                self.task_policy = pvtol_linear_task_policy
+            else:
+                self.task_policy = bicycle_linear_task_policy    
+        
+            self.safety_policy = iLQRSafetyFilter(
+                self.id, config, self.dyn, cost
             )
         else:
             raise ValueError(
