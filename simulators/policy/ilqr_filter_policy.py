@@ -21,7 +21,7 @@ class iLQRSafetyFilter(iLQR):
         self.config = config
 
         self.filter_type = config.FILTER_TYPE
-        self.constraint_type = config.CBF_TYPE
+        self.constraint_type = config.CONSTRAINT_TYPE
         if self.filter_type == 'CBF':
             self.gamma = config.CBF_GAMMA
         elif self.filter_type == 'SoftCBF':
