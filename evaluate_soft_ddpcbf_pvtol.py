@@ -24,13 +24,18 @@ os.environ["CUDA_VISIBLE_DEVICES"] = " "
 
 jax.config.update('jax_platform_name', 'cpu')
 
-def main(config_file):
+def main(config_file, filter_type, is_task_ilqr):
     ## ------------------------------------- Warmup fields ------------------------------------------ ##
     config = load_config(config_file)
     config_env = config['environment']
     config_agent = config['agent']
     config_solver = config['solver']
-    config_solver.is_task_ilqr = True
+
+    # Hacks to get information everywhere.
+    config_solver.is_task_ilqr = is_task_ilqr
+    config_solver.FILTER_TYPE = filter_type
+    config_agent.FILTER_TYPE = filter_type
+
     plot_tag = config_env.tag
     if config_solver.is_task_ilqr:
         plot_tag += '_ilqrtask_'
@@ -38,7 +43,6 @@ def main(config_file):
         plot_tag += '_naivetask_'
 
     config_cost = config['cost']
-    dyn_id = config_agent.DYN
 
     # May not be needed ATM.
     config_cost.N = config_solver.N
@@ -64,7 +68,7 @@ def main(config_file):
         if config_solver.FILTER_TYPE == "none":
             policy_type = "iLQRReachAvoid"
             cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             task_cost = Pvtol6DCost(
                 config_ilqr_cost, copy.deepcopy(
                     env.agent.dyn))
@@ -72,7 +76,7 @@ def main(config_file):
         else:
             policy_type = "iLQRSafetyFilter"
             cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             task_cost = Pvtol6DCost(
                 config_ilqr_cost, copy.deepcopy(
                     env.agent.dyn))
@@ -82,18 +86,17 @@ def main(config_file):
         if config_solver.FILTER_TYPE == "none":
             policy_type = "iLQRReachability"
             cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             env.cost = cost  # ! hacky
         else:
             policy_type = "iLQRSafetyFilter"
             cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             task_cost = Pvtol6DCost(
                 config_ilqr_cost, copy.deepcopy(
                     env.agent.dyn))
             env.cost = cost
 
-    config_solver.FILTER_TYPE = "SoftCBF"
     env.agent.init_policy(
         policy_type=policy_type,
         config=config_solver,
@@ -153,7 +156,7 @@ def main(config_file):
             *args,
             **kwargs):
         plot_run_summary(
-            dyn_id,
+            config_agent.DYN,
             env,
             state_history,
             action_history,
@@ -191,82 +194,71 @@ def main(config_file):
     if not config_solver.is_task_ilqr:
         out_folder = os.path.join(out_folder, "naivetask")
 
-    filters = []
-    #filters.append('SoftLR')
-    filters.append('CBF')
-    filters.append('SoftCBF')
-    for filter_type in filters:
-        current_out_folder = os.path.join(out_folder, filter_type)
-        config_solver.OUT_FOLDER = current_out_folder
-        config_solver.FILTER_TYPE = filter_type
+    current_out_folder = os.path.join(out_folder, filter_type)
+    config_solver.OUT_FOLDER = current_out_folder
 
-        fig_folder = os.path.join(current_out_folder, "figure")
-        fig_prog_folder = os.path.join(fig_folder, "progress")
-        os.makedirs(fig_prog_folder, exist_ok=True)
-        copyfile(
-            config_file,
-            os.path.join(
-                current_out_folder,
-                'config.yaml'))
-        sys.stdout = PrintLogger(
-            os.path.join(
-                config_solver.OUT_FOLDER,
-                'log.txt'))
-        sys.stderr = PrintLogger(
-            os.path.join(
-                config_solver.OUT_FOLDER,
-                'log.txt'))
+    fig_folder = os.path.join(current_out_folder, "figure")
+    fig_prog_folder = os.path.join(fig_folder, "progress")
+    os.makedirs(fig_prog_folder, exist_ok=True)
+    copyfile(
+        config_file,
+        os.path.join(
+            current_out_folder,
+            'config.yaml'))
+    sys.stdout = PrintLogger(
+        os.path.join(
+            config_solver.OUT_FOLDER,
+            'log.txt'))
+    sys.stderr = PrintLogger(
+        os.path.join(
+            config_solver.OUT_FOLDER,
+            'log.txt'))
 
-        config_current_cost = copy.deepcopy(config_ilqr_cost)
-        if 'LR' in filter_type:
-            config_current_cost.W_1 = 1e-4
-            config_current_cost.W_2 = 1e-4
+    config_current_cost = copy.deepcopy(config_ilqr_cost)
+    if 'LR' in filter_type:
+        config_current_cost.W_1 = 1e-4
+        config_current_cost.W_2 = 1e-4
 
-        cost = PvtolReachAvoid6DMargin(
-                    config_current_cost, copy.deepcopy(
-                        env.agent.dyn), filter_type=filter_type)
-        env.cost = cost
-        env.agent.init_policy(
-            policy_type=policy_type,
-            config=config_solver,
-            cost=cost,
-            task_cost=task_cost)
+    # Warmup again
+    cost = PvtolReachAvoid6DMargin(
+                config_current_cost, copy.deepcopy(
+                    env.agent.dyn), filter_type=filter_type)
+    env.cost = cost
+    env.agent.init_policy(
+        policy_type=policy_type,
+        config=config_solver,
+        cost=cost,
+        task_cost=task_cost)
+    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
 
-        env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    nominal_states, result, traj_info = env.simulate_one_trajectory(
+        T_rollout=max_iter_receding, end_criterion=end_criterion,
+        reset_kwargs=dict(state=x_cur),
+        rollout_step_callback=rollout_step_callback,
+        rollout_episode_callback=rollout_episode_callback,
+    )
 
-        nominal_states, result, traj_info = env.simulate_one_trajectory(
-            T_rollout=max_iter_receding, end_criterion=end_criterion,
-            reset_kwargs=dict(state=x_cur),
-            rollout_step_callback=rollout_step_callback,
-            rollout_episode_callback=rollout_episode_callback,
-        )
+    print("result:", result)
+    print(traj_info['step_history'][-1]["done_type"])
+    constraints: Dict = traj_info['step_history'][-1]['constraints']
+    for k, v in constraints.items():
+        print(f"{k}: {v[0, 1]:.1e}")
 
-        print("result:", result)
-        print(traj_info['step_history'][-1]["done_type"])
-        constraints: Dict = traj_info['step_history'][-1]['constraints']
-        for k, v in constraints.items():
-            print(f"{k}: {v[0, 1]:.1e}")
+    # endregion
 
-        # endregion
+    # region: Visualizes
+    gif_path = os.path.join(fig_folder, 'rollout.gif')
+    frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
+    with imageio.get_writer(gif_path, mode='I') as writer:
+        for i in range(len(nominal_states) - 1):
+            if frame_skip != 1 and (i + 1) % frame_skip != 0:
+                continue
+            filename = os.path.join(
+                fig_prog_folder, str(i + 1) + ".png")
+            image = imageio.imread(filename)
+            writer.append_data(image)
 
-        # region: Visualizes
-        gif_path = os.path.join(fig_folder, 'rollout.gif')
-        frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
-        with imageio.get_writer(gif_path, mode='I') as writer:
-            for i in range(len(nominal_states) - 1):
-                if frame_skip != 1 and (i + 1) % frame_skip != 0:
-                    continue
-                filename = os.path.join(
-                    fig_prog_folder, str(i + 1) + ".png")
-                image = imageio.imread(filename)
-                writer.append_data(image)
-
-    make_pvtol_comparison_report(
-        out_folder,
-        plot_folder='./plots_summary/',
-        tag=plot_tag,
-        dt=config_agent.DT,
-        filters=filters)
+    return out_folder, plot_tag, config_agent
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -282,4 +274,14 @@ if __name__ == "__main__":
     parser.set_defaults(naive_task=False)
 
     args = parser.parse_args()
-    main(args.config_file)
+    is_task_ilqr = False
+    out_folder, plot_tag, config_agent = main(args.config_file, filter_type='SoftCBF', is_task_ilqr=is_task_ilqr)
+    out_folder, plot_tag, config_agent = main(args.config_file, filter_type='CBF', is_task_ilqr=is_task_ilqr)
+
+    make_pvtol_comparison_report(
+        out_folder,
+        plot_folder='./plots_summary/',
+        tag=plot_tag,
+        dt=config_agent.DT,
+        filters=['SoftCBF', 'CBF'])
+
