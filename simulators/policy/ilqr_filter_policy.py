@@ -76,7 +76,7 @@ class iLQRSafetyFilter(BasePolicy):
 
         # Find safe policy from step 0
         if prev_sol is not None:
-            controls_initialize = jnp.array(prev_sol['reinit_controls'])
+            controls_initialize = prev_sol['reinit_controls']
         else:
             controls_initialize = None
 
@@ -109,7 +109,6 @@ class iLQRSafetyFilter(BasePolicy):
 
         _, solver_info_1 = self.solver_1.get_action(
             obs=state_imaginary, controls=boot_controls, state=state_imaginary)
-        boot_controls = jnp.array(solver_info_1['controls'])
 
         solver_info_0['Vopt_next'] = solver_info_1['Vopt']
         solver_info_0['marginopt_next'] = solver_info_1['marginopt']
@@ -127,7 +126,7 @@ class iLQRSafetyFilter(BasePolicy):
                 solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:,
                                                                                        0:self.N - 1].set(solver_info_0['controls'][:, 1:self.N])
                 if self.dyn.id ==  "PVTOL6D":
-                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 1].set(self.dyn.mass * self.dyn.g)
+                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.mass * self.dyn.g)
                 else:
                     solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.ctrl_space[0, 0])
 
@@ -160,7 +159,7 @@ class iLQRSafetyFilter(BasePolicy):
 
             solver_initial = np.zeros((2,))
             if prev_sol is not None:
-                solver_initial = np.array(prev_ctrl - control_cbf_cand)
+                solver_initial = (prev_ctrl - control_cbf_cand)
 
             # Define initial state and initial performance policy
             initial_state_jnp = jnp.array(initial_state[:, np.newaxis])
@@ -214,12 +213,11 @@ class iLQRSafetyFilter(BasePolicy):
                         grad_x, B0, scaled_c)
 
                 control_bias_term = control_bias_term + control_correction
-                filtered_control = control_cbf_cand + \
+                control_cbf_cand = control_cbf_cand + \
                     np.array(control_correction)
 
                 # Restart from current point and run again
-                control_cbf_cand = np.array(filtered_control)
-                solver_initial = np.array(prev_ctrl - control_cbf_cand)
+                solver_initial = (prev_ctrl - control_cbf_cand)
 
                 state_imaginary, control_cbf_cand = self.dyn.integrate_forward(
                     state=initial_state, control=control_cbf_cand
