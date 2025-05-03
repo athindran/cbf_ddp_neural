@@ -109,7 +109,10 @@ class Agent:
     def get_action(
         self, obs: np.ndarray,
         agents_action: Optional[Dict[str, np.ndarray]] = None,
-        warmup: bool = False, **kwargs
+        warmup: bool = False,
+        prev_sol: Optional[Dict] = None, 
+        prev_ctrl:np.ndarray = np.array([0.0, 0.0]), 
+        **kwargs
     ) -> Tuple[np.ndarray, dict]:
         """Gets the action to execute.
 
@@ -141,7 +144,8 @@ class Agent:
                 task_ctrl = self.task_policy(obs)
             # Filter to safe control
             _action, _solver_info = self.safety_policy.get_action(  # Proposed action.
-                state=kwargs['state'], obs=obs, task_ctrl=task_ctrl, warmup=warmup
+                state=kwargs['state'], obs=obs, task_ctrl=task_ctrl, warmup=warmup, 
+                prev_sol=prev_sol, prev_ctrl=prev_ctrl, 
             )
         else:
             _action, _solver_info = self.policy.get_action(  # Proposed action.

@@ -64,15 +64,15 @@ class iLQRSafetyFilter(BasePolicy):
     def get_action(
         self, obs: np.ndarray, state:np.ndarray, 
         task_ctrl: np.ndarray = np.array([0.0, 0.0]),
-        controls: Optional[np.ndarray] = None,
         prev_sol: Optional[Dict] = None, 
-        prev_ctrl:np.ndarray = np.array([0.0, 0.0]), 
+        prev_ctrl: np.ndarray = np.array([0.0, 0.0]), 
         warmup=False,
     ) -> np.ndarray:
 
         # Linear feedback policy
         initial_state = np.array(state)
         stopping_ctrl = np.array([self.dyn.ctrl_space[0, 0], 0])
+        task_ctrl = np.array(task_ctrl)
 
         # Find safe policy from step 0
         if prev_sol is not None:
@@ -82,7 +82,7 @@ class iLQRSafetyFilter(BasePolicy):
 
         if prev_sol is None or prev_sol['resolve']:
             control_0, solver_info_0 = self.solver_0.get_action(
-                obs, controls_initialize, state=state)
+                obs=obs, controls=controls_initialize, state=state)
         else:
             # Potential source of acceleration. We don't need to resolve both ILQs as we can reuse
             # solution from previous time. - Unused currently.
@@ -108,7 +108,7 @@ class iLQRSafetyFilter(BasePolicy):
         boot_controls = jnp.array(solver_info_0['controls'])
 
         _, solver_info_1 = self.solver_1.get_action(
-            state_imaginary, boot_controls, state=state_imaginary)
+            obs=state_imaginary, controls=boot_controls, state=state_imaginary)
         boot_controls = jnp.array(solver_info_1['controls'])
 
         solver_info_0['Vopt_next'] = solver_info_1['Vopt']
@@ -224,7 +224,7 @@ class iLQRSafetyFilter(BasePolicy):
                 state_imaginary, control_cbf_cand = self.dyn.integrate_forward(
                     state=initial_state, control=control_cbf_cand
                 )
-                _, solver_info_1 = self.solver_2.get_action(state_imaginary,
+                _, solver_info_1 = self.solver_2.get_action(obs=state_imaginary,
                                                             controls=jnp.array(
                                                                 solver_info_1['controls']),
                                                             state=state_imaginary)

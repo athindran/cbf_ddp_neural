@@ -201,8 +201,9 @@ def main(config_file, road_boundary, is_task_ilqr):
     # if config_cost.COST_TYPE=='Reachavoid':
     #filters.append('SoftLR')
     
-    #filters.append('CBF')
     filters.append('SoftCBF')
+    #filters.append('CBF')
+    #filters.append('SoftLR')
     for _, yaw_constraint in enumerate(yaw_constraints):
         for filter_type in filters:
             print("Simulation starting...")

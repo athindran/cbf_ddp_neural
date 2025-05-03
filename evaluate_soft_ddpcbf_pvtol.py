@@ -29,11 +29,12 @@ def main(config_file):
     config = load_config(config_file)
     config_env = config['environment']
     config_agent = config['agent']
+    is_task_ilqr = True
     config_agent.is_task_ilqr = is_task_ilqr
 
     config_solver = config['solver']
     plot_tag = config_env.tag
-    if config_solver.is_task_ilqr:
+    if config_agent.is_task_ilqr:
         plot_tag += '_ilqrtask_'
     else:
         plot_tag += '_naivetask_'
@@ -193,9 +194,9 @@ def main(config_file):
         out_folder = os.path.join(out_folder, "naivetask")
 
     filters = []
-    #filters.append('SoftLR')
-    filters.append('CBF')
     filters.append('SoftCBF')
+    filters.append('CBF')
+    #filters.append('SoftLR')
     for filter_type in filters:
         current_out_folder = os.path.join(out_folder, filter_type)
         config_solver.OUT_FOLDER = current_out_folder
