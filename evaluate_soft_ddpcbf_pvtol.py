@@ -29,8 +29,9 @@ def main(config_file):
     config = load_config(config_file)
     config_env = config['environment']
     config_agent = config['agent']
+    config_agent.is_task_ilqr = is_task_ilqr
+
     config_solver = config['solver']
-    config_solver.is_task_ilqr = True
     plot_tag = config_env.tag
     if config_solver.is_task_ilqr:
         plot_tag += '_ilqrtask_'
@@ -91,7 +92,7 @@ def main(config_file):
             task_cost = Pvtol6DCost(
                 config_ilqr_cost, copy.deepcopy(
                     env.agent.dyn))
-            env.cost = cost
+            env.cost = cost  # ! hacky
 
     config_solver.FILTER_TYPE = "SoftCBF"
     env.agent.init_policy(
@@ -103,7 +104,7 @@ def main(config_file):
 
     # region: Runs iLQR
     # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
     env.report()
     ## ------------------------------------ Evaluation starts -------------------------------------------
     # Callback after each timestep for plotting and summarizing evaluation
@@ -188,7 +189,7 @@ def main(config_file):
     out_folder = config_solver.OUT_FOLDER
 
     # Naive task is not compatible with current configuration.
-    if not config_solver.is_task_ilqr:
+    if not config_agent.is_task_ilqr:
         out_folder = os.path.join(out_folder, "naivetask")
 
     filters = []
@@ -225,14 +226,14 @@ def main(config_file):
         cost = PvtolReachAvoid6DMargin(
                     config_current_cost, copy.deepcopy(
                         env.agent.dyn), filter_type=filter_type)
-        env.cost = cost
+        env.cost = cost  # ! hacky
         env.agent.init_policy(
             policy_type=policy_type,
             config=config_solver,
             cost=cost,
             task_cost=task_cost)
 
-        env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+        env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
 
         nominal_states, result, traj_info = env.simulate_one_trajectory(
             T_rollout=max_iter_receding, end_criterion=end_criterion,

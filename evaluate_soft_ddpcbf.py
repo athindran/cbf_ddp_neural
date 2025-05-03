@@ -30,8 +30,9 @@ def main(config_file, road_boundary, is_task_ilqr):
     config = load_config(config_file)
     config_env = config['environment']
     config_agent = config['agent']
+    config_agent.is_task_ilqr = is_task_ilqr
+
     config_solver = config['solver']
-    config_solver.is_task_ilqr = is_task_ilqr
     config_cost = config['cost']
     dyn_id = config_agent.DYN
     plot_tag = config_env.tag
@@ -96,8 +97,8 @@ def main(config_file, road_boundary, is_task_ilqr):
             task_cost = Bicycle5DCost(
                 config_ilqr_cost, copy.deepcopy(
                     env.agent.dyn))
-            env.cost = cost
-
+            env.cost = cost # ! hacky
+    
     env.agent.init_policy(
         policy_type=policy_type,
         config=config_solver,
@@ -107,7 +108,7 @@ def main(config_file, road_boundary, is_task_ilqr):
 
     # region: Runs iLQR
     # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+    env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
     env.report()
     ## ------------------------------------ Evaluation starts -------------------------------------------
     # Callback after each timestep for plotting and summarizing evaluation
@@ -193,7 +194,7 @@ def main(config_file, road_boundary, is_task_ilqr):
 
     out_folder = config_solver.OUT_FOLDER
 
-    if not config_solver.is_task_ilqr:
+    if not config_agent.is_task_ilqr:
         out_folder = os.path.join(out_folder, "naivetask")
 
     filters = []
@@ -262,7 +263,9 @@ def main(config_file, road_boundary, is_task_ilqr):
             cost = BicycleReachAvoid5DMargin(
                 config_current_cost, copy.deepcopy(
                     env.agent.dyn), filter_type=filter_type)
-            env.cost = cost
+            
+            env.cost = cost # ! hacky
+
             env.agent.init_policy(
                 policy_type=policy_type,
                 config=config_solver,
@@ -270,7 +273,7 @@ def main(config_file, road_boundary, is_task_ilqr):
                 task_cost=task_cost)
 
             # Warms up jit
-            env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
+            env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
 
             nominal_states, result, traj_info = env.simulate_one_trajectory(
                 T_rollout=max_iter_receding, end_criterion=end_criterion,
