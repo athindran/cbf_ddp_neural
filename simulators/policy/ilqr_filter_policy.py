@@ -126,7 +126,7 @@ class iLQRSafetyFilter(BasePolicy):
                 solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:,
                                                                                        0:self.N - 1].set(solver_info_0['controls'][:, 1:self.N])
                 if self.dyn.id ==  "PVTOL6D":
-                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.mass * self.dyn.g)
+                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[1, -1].set(self.dyn.mass * self.dyn.g)
                 else:
                     solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.ctrl_space[0, 0])
 
