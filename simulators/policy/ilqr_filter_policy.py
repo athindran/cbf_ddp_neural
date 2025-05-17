@@ -8,20 +8,20 @@ import numpy as np
 
 from .ilqr_reachavoid_policy import iLQRReachAvoid
 from .ilqr_reachability_policy import iLQRReachability
-from .ilqr_policy import iLQR
-from .solver_utils import barrier_filter_linear, barrier_filter_quadratic, bicycle_linear_task_policy, pvtol_linear_task_policy
+from .base_policy import BasePolicy
+from .solver_utils import barrier_filter_linear, barrier_filter_quadratic
 from simulators.dynamics.base_dynamics import BaseDynamics
 from simulators.costs.base_margin import BaseMargin
 
-class iLQRSafetyFilter(iLQR):
+class iLQRSafetyFilter(BasePolicy):
 
     def __init__(self, id: str, config, dyn: BaseDynamics,
-                 cost: BaseMargin, task_cost: BaseMargin) -> None:
-        super().__init__(id, config, dyn, cost)
+                 cost: BaseMargin) -> None:
+        super().__init__(id, config)
         self.config = config
 
         self.filter_type = config.FILTER_TYPE
-        self.constraint_type = config.CBF_TYPE
+        self.constraint_type = config.CONSTRAINT_TYPE
         if self.filter_type == 'CBF':
             self.gamma = config.CBF_GAMMA
         elif self.filter_type == 'SoftCBF':
@@ -35,29 +35,16 @@ class iLQRSafetyFilter(iLQR):
         self.barrier_filter_steps = 0
 
         self.dyn = copy.deepcopy(dyn)
-        self.cost = copy.deepcopy(cost)
-        self.task_cost = task_cost
-
         self.rollout_dyn_0 = copy.deepcopy(dyn)
         self.rollout_dyn_1 = copy.deepcopy(dyn)
         self.rollout_dyn_2 = copy.deepcopy(dyn)
+
+        self.cost = copy.deepcopy(cost)
 
         self.dim_x = dyn.dim_x
         self.dim_u = dyn.dim_u
         self.N = config.N
 
-        self.is_task_ilqr = self.config.is_task_ilqr
-
-        if self.config.is_task_ilqr:
-            self.task_policy = iLQR(
-                self.id,
-                self.config,
-                self.rollout_dyn_2,
-                self.task_cost)
-        elif self.dyn.id ==  "PVTOL6D":
-            self.task_policy = pvtol_linear_task_policy
-        else:
-            self.task_policy = bicycle_linear_task_policy
         # Two ILQR solvers
         if self.config.COST_TYPE == "Reachavoid":
             self.solver_0 = iLQRReachAvoid(
@@ -75,30 +62,27 @@ class iLQRSafetyFilter(iLQR):
                 self.id, self.config, self.rollout_dyn_1, self.cost)
 
     def get_action(
-        self, obs: np.ndarray, controls: Optional[np.ndarray] = None,
-        prev_sol: Optional[Dict] = None, prev_action:np.ndarray = np.array([0.0, 0.0]), warmup=False, **kwargs
+        self, obs: np.ndarray, state:np.ndarray, 
+        task_ctrl: np.ndarray = np.array([0.0, 0.0]),
+        prev_sol: Optional[Dict] = None, 
+        prev_ctrl: np.ndarray = np.array([0.0, 0.0]), 
+        warmup=False,
     ) -> np.ndarray:
 
         # Linear feedback policy
-        initial_state = np.array(kwargs['state'])
+        initial_state = np.array(state)
         stopping_ctrl = np.array([self.dyn.ctrl_space[0, 0], 0])
-
-        if self.config.is_task_ilqr:
-            task_ctrl, _ = self.task_policy.get_action(obs, None, **kwargs)
-        elif self.dyn.id ==  "PVTOL6D":
-            task_ctrl = self.task_policy(initial_state, self.dyn)
-        else:
-            task_ctrl = self.task_policy(initial_state)
+        task_ctrl = np.array(task_ctrl)
 
         # Find safe policy from step 0
         if prev_sol is not None:
-            controls_initialize = jnp.array(prev_sol['reinit_controls'])
+            controls_initialize = prev_sol['reinit_controls']
         else:
             controls_initialize = None
 
         if prev_sol is None or prev_sol['resolve']:
             control_0, solver_info_0 = self.solver_0.get_action(
-                obs, controls_initialize, **kwargs)
+                obs=obs, controls=controls_initialize, state=state)
         else:
             # Potential source of acceleration. We don't need to resolve both ILQs as we can reuse
             # solution from previous time. - Unused currently.
@@ -121,12 +105,10 @@ class iLQRSafetyFilter(iLQR):
         state_imaginary, task_ctrl = self.dyn.integrate_forward(
             state=initial_state, control=task_ctrl
         )
-        kwargs['state'] = jnp.array(state_imaginary)
         boot_controls = jnp.array(solver_info_0['controls'])
 
         _, solver_info_1 = self.solver_1.get_action(
-            state_imaginary, boot_controls, **kwargs)
-        boot_controls = jnp.array(solver_info_1['controls'])
+            obs=state_imaginary, controls=boot_controls, state=state_imaginary)
 
         solver_info_0['Vopt_next'] = solver_info_1['Vopt']
         solver_info_0['marginopt_next'] = solver_info_1['marginopt']
@@ -144,7 +126,7 @@ class iLQRSafetyFilter(iLQR):
                 solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:,
                                                                                        0:self.N - 1].set(solver_info_0['controls'][:, 1:self.N])
                 if self.dyn.id ==  "PVTOL6D":
-                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 1].set(self.dyn.mass * self.dyn.g)
+                    solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[1, -1].set(self.dyn.mass * self.dyn.g)
                 else:
                     solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, -1].set(self.dyn.ctrl_space[0, 0])
 
@@ -177,7 +159,7 @@ class iLQRSafetyFilter(iLQR):
 
             solver_initial = np.zeros((2,))
             if prev_sol is not None:
-                solver_initial = np.array(prev_action - control_cbf_cand)
+                solver_initial = (prev_ctrl - control_cbf_cand)
 
             # Define initial state and initial performance policy
             initial_state_jnp = jnp.array(initial_state[:, np.newaxis])
@@ -231,21 +213,19 @@ class iLQRSafetyFilter(iLQR):
                         grad_x, B0, scaled_c)
 
                 control_bias_term = control_bias_term + control_correction
-                filtered_control = control_cbf_cand + \
+                control_cbf_cand = control_cbf_cand + \
                     np.array(control_correction)
 
                 # Restart from current point and run again
-                control_cbf_cand = np.array(filtered_control)
-                solver_initial = np.array(prev_action - control_cbf_cand)
+                solver_initial = (prev_ctrl - control_cbf_cand)
 
                 state_imaginary, control_cbf_cand = self.dyn.integrate_forward(
                     state=initial_state, control=control_cbf_cand
                 )
-                kwargs['state'] = np.array(state_imaginary)
-                _, solver_info_1 = self.solver_2.get_action(state_imaginary,
+                _, solver_info_1 = self.solver_2.get_action(obs=state_imaginary,
                                                             controls=jnp.array(
                                                                 solver_info_1['controls']),
-                                                            **kwargs)
+                                                            state=state_imaginary)
                 solver_info_0['Vopt_next'] = solver_info_1['Vopt']
                 solver_info_0['marginopt_next'] = solver_info_1['marginopt']
                 solver_info_0['is_inside_target_next'] = solver_info_1['is_inside_target']

@@ -25,91 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = " "
 jax.config.update('jax_platform_name', 'cpu')
 
 
-def main(config_file, road_boundary, is_task_ilqr):
-    ## ------------------------------------- Warmup fields ------------------------------------------ ##
-    config = load_config(config_file)
-    config_env = config['environment']
-    config_agent = config['agent']
-    config_solver = config['solver']
-    config_solver.is_task_ilqr = is_task_ilqr
-    config_cost = config['cost']
-    dyn_id = config_agent.DYN
-    plot_tag = config_env.tag
-    if is_task_ilqr:
-        plot_tag += '_ilqrtask_'
-    else:
-        plot_tag += '_naivetask_'
-
-    # Provide common fields to cost
-    config_cost.N = config_solver.N
-    config_cost.V_MIN = config_agent.V_MIN
-    config_cost.DELTA_MIN = config_agent.DELTA_MIN
-    config_cost.V_MAX = config_agent.V_MAX
-    config_cost.DELTA_MAX = config_agent.DELTA_MAX
-
-    config_cost.TRACK_WIDTH_RIGHT = road_boundary
-    config_cost.TRACK_WIDTH_LEFT = road_boundary
-    config_env.TRACK_WIDTH_RIGHT = road_boundary
-    config_env.TRACK_WIDTH_LEFT = road_boundary
-
-    env = CarSingle5DEnv(config_env, config_agent, config_cost)
-    x_cur = np.array(
-        getattr(
-            config_solver, "INIT_STATE", [
-                0., 0., 0.5, 0., 0.]))
-    env.reset(x_cur)
-
-    # region: Constructs placeholder and initializes iLQR
-    config_ilqr_cost = copy.deepcopy(config_cost)
-
-    policy_type = None
-    cost = None
-    config_solver.COST_TYPE = config_cost.COST_TYPE
-    if config_cost.COST_TYPE == "Reachavoid":
-        if config_solver.FILTER_TYPE == "none":
-            policy_type = "iLQRReachAvoid"
-            cost = BicycleReachAvoid5DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
-            task_cost = Bicycle5DCost(
-                config_ilqr_cost, copy.deepcopy(
-                    env.agent.dyn))
-            env.cost = cost  # ! hacky
-        else:
-            policy_type = "iLQRSafetyFilter"
-            cost = BicycleReachAvoid5DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
-            task_cost = Bicycle5DCost(
-                config_ilqr_cost, copy.deepcopy(
-                    env.agent.dyn))
-            env.cost = cost  # ! hacky
-    # Not supported
-    elif config_cost.COST_TYPE == "Reachability":
-        if config_solver.FILTER_TYPE == "none":
-            policy_type = "iLQRReachability"
-            cost = BicycleReachAvoid5DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
-            env.cost = cost  # ! hacky
-        else:
-            policy_type = "iLQRSafetyFilter"
-            cost = BicycleReachAvoid5DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn))
-            task_cost = Bicycle5DCost(
-                config_ilqr_cost, copy.deepcopy(
-                    env.agent.dyn))
-            env.cost = cost
-
-    env.agent.init_policy(
-        policy_type=policy_type,
-        config=config_solver,
-        cost=cost,
-        task_cost=task_cost)
-    max_iter_receding = config_solver.MAX_ITER_RECEDING
-
-    # region: Runs iLQR
-    # Warms up jit
-    env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
-    env.report()
-    ## ------------------------------------ Evaluation starts -------------------------------------------
+def main(config_file, road_boundary, filter_type, is_task_ilqr):
     # Callback after each timestep for plotting and summarizing evaluation
     def rollout_step_callback(
             env: CarSingle5DEnv,
@@ -187,127 +103,180 @@ def main(config_file, road_boundary, is_task_ilqr):
                 "\n\n --> Complete filtering performed at {:.3f} steps.".format(
                     solver_info['filter_steps']))
 
-    end_criterion = "failure"
 
-    yaw_constraints = [None]
+    ## ------------------------------------- Warmup fields ------------------------------------------ ##
+    config = load_config(config_file)
+    config_env = config['environment']
+    config_agent = config['agent']
+    config_solver = config['solver']
+    config_agent.is_task_ilqr = is_task_ilqr
+    config_solver.FILTER_TYPE = filter_type
+    config_agent.FILTER_TYPE = filter_type
+    config_cost = config['cost']
+    dyn_id = config_agent.DYN
+    plot_tag = config_env.tag
+    if is_task_ilqr:
+        plot_tag += '_ilqrtask_'
+    else:
+        plot_tag += '_naivetask_'
+
+    # Provide common fields to cost
+    config_cost.N = config_solver.N
+    config_cost.V_MIN = config_agent.V_MIN
+    config_cost.DELTA_MIN = config_agent.DELTA_MIN
+    config_cost.V_MAX = config_agent.V_MAX
+    config_cost.DELTA_MAX = config_agent.DELTA_MAX
+
+    config_cost.TRACK_WIDTH_RIGHT = road_boundary
+    config_cost.TRACK_WIDTH_LEFT = road_boundary
+    config_env.TRACK_WIDTH_RIGHT = road_boundary
+    config_env.TRACK_WIDTH_LEFT = road_boundary
+
+    env = CarSingle5DEnv(config_env, config_agent, config_cost)
+    x_cur = np.array(
+        getattr(
+            config_solver, "INIT_STATE", [
+                0., 0., 0.5, 0., 0.]))
+    env.reset(x_cur)
+
+    # region: Constructs placeholder and initializes iLQR
+    config_ilqr_cost = copy.deepcopy(config_cost)
+
+    policy_type = None
+    cost = None
+    config_solver.COST_TYPE = config_cost.COST_TYPE
+    if config_cost.COST_TYPE == "Reachavoid":
+        if config_solver.FILTER_TYPE == "none":
+            policy_type = "iLQRReachAvoid"
+            cost = BicycleReachAvoid5DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type)
+            env.cost = cost  # ! hacky
+        else:
+            policy_type = "iLQRSafetyFilter"
+            task_cost = Bicycle5DCost(
+                config_ilqr_cost, copy.deepcopy(
+                    env.agent.dyn))
+            cost = BicycleReachAvoid5DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type)
+            env.cost = cost  # ! hacky
+    # Not supported
+    elif config_cost.COST_TYPE == "Reachability":
+        if config_solver.FILTER_TYPE == "none":
+            policy_type = "iLQRReachability"
+            cost = BicycleReachAvoid5DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type)
+            env.cost = cost  # ! hacky
+        else:
+            policy_type = "iLQRSafetyFilter"
+            task_cost = Bicycle5DCost(
+                config_ilqr_cost, copy.deepcopy(
+                    env.agent.dyn))
+            cost = BicycleReachAvoid5DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type)
+            env.cost = cost
+
+    env.agent.init_policy(
+        policy_type=policy_type,
+        config=config_solver,
+        cost=cost,
+        task_cost=task_cost)
+    max_iter_receding = config_solver.MAX_ITER_RECEDING
+
+    # region: Runs iLQR
+    # Warms up jit
+    env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
+    env.report()
+    ## ------------------------------------ Evaluation starts -------------------------------------------
+    end_criterion = "failure"
 
     out_folder = config_solver.OUT_FOLDER
 
-    if not config_solver.is_task_ilqr:
+    if not config_agent.is_task_ilqr:
         out_folder = os.path.join(out_folder, "naivetask")
 
-    filters = []
-    # if config_cost.COST_TYPE=='Reachavoid':
-    #filters.append('SoftLR')
-    
-    #filters.append('CBF')
-    filters.append('SoftCBF')
-    for _, yaw_constraint in enumerate(yaw_constraints):
-        for filter_type in filters:
-            print("Simulation starting...")
-            print("Road boundary", road_boundary)
-            print("Yaw constraint", yaw_constraint)
-            print("Filter type", filter_type)
-            if 'LR' in filter_type:
-                yaw_constraint = 0.5*np.pi
-            else:
-                yaw_constraint = None
+    yaw_constraint = None
+    print(f"Road boundary: {road_boundary}")
+    print(f"Yaw constraint: {yaw_constraint}", )
+    print(f"Filter type: {filter_type}" )
 
-            config_solver.FILTER_TYPE = filter_type
-            # if yaw_constraint is not None:
-            #     current_out_folder = os.path.join(out_folder, "road_boundary=" + str(road_boundary) +
-            #                                       ", yaw=" +
-            #                                       str(round(yaw_constraint, 2)))
-            # else:
-            current_out_folder = os.path.join(
-                out_folder,
-                "road_boundary=" +
-                str(road_boundary))
-            current_out_folder = os.path.join(current_out_folder, filter_type)
-            config_solver.OUT_FOLDER = current_out_folder
-            fig_folder = os.path.join(current_out_folder, "figure")
-            fig_prog_folder = os.path.join(fig_folder, "progress")
-            os.makedirs(fig_prog_folder, exist_ok=True)
-            copyfile(
-                config_file,
-                os.path.join(
-                    current_out_folder,
-                    'config.yaml'))
-            sys.stdout = PrintLogger(
-                os.path.join(
-                    config_solver.OUT_FOLDER,
-                    'log.txt'))
-            sys.stderr = PrintLogger(
-                os.path.join(
-                    config_solver.OUT_FOLDER,
-                    'log.txt'))
-
-            config_current_cost = copy.deepcopy(config_ilqr_cost)
-
-            if 'LR' in filter_type:
-                config_current_cost.W_ACCEL = 1e-4
-                config_current_cost.W_OMEGA = 1e-4
-
-            if yaw_constraint is not None:
-                config_current_cost.USE_YAW = True
-                config_current_cost.YAW_MAX = yaw_constraint
-                config_current_cost.YAW_MIN = -yaw_constraint
-            else:
-                config_current_cost.USE_YAW = False
-
-            config_current_cost.TRACK_WIDTH_RIGHT = road_boundary
-            config_current_cost.TRACK_WIDTH_LEFT = road_boundary
-            env.visual_extent[2] = -road_boundary
-            env.visual_extent[3] = road_boundary
-            cost = BicycleReachAvoid5DMargin(
-                config_current_cost, copy.deepcopy(
-                    env.agent.dyn), filter_type=filter_type)
-            env.cost = cost
-            env.agent.init_policy(
-                policy_type=policy_type,
-                config=config_solver,
-                cost=cost,
-                task_cost=task_cost)
-
-            # Warms up jit
-            env.agent.policy.get_action(obs=x_cur, state=x_cur, warmup=True)
-
-            nominal_states, result, traj_info = env.simulate_one_trajectory(
-                T_rollout=max_iter_receding, end_criterion=end_criterion,
-                reset_kwargs=dict(state=x_cur),
-                rollout_step_callback=rollout_step_callback,
-                rollout_episode_callback=rollout_episode_callback,
-            )
-
-            print("result:", result)
-            print(traj_info['step_history'][-1]["done_type"])
-            constraints: Dict = traj_info['step_history'][-1]['constraints']
-            for k, v in constraints.items():
-                print(f"{k}: {v[0, 1]:.1e}")
-
-            # endregion
-
-            # region: Visualizes
-            gif_path = os.path.join(fig_folder, 'rollout.gif')
-            frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
-            with imageio.get_writer(gif_path, mode='I') as writer:
-                for i in range(len(nominal_states) - 1):
-                    if frame_skip != 1 and (i + 1) % frame_skip != 0:
-                        continue
-                    filename = os.path.join(
-                        fig_prog_folder, str(i + 1) + ".png")
-                    image = imageio.imread(filename)
-                    writer.append_data(image)
-                    #Image(open(gif_path, 'rb').read(), width=400)
-            # endregion
-
-    make_yaw_report(
+    # if yaw_constraint is not None:
+    #     current_out_folder = os.path.join(out_folder, "road_boundary=" + str(road_boundary) +
+    #                                       ", yaw=" +
+    #                                       str(round(yaw_constraint, 2)))
+    # else:
+    current_out_folder = os.path.join(
         out_folder,
-        plot_folder='./plots_summary/',
-        tag=plot_tag + "_" + str(road_boundary),
-        road_boundary=road_boundary,
-        dt=config_agent.DT,
-        filters=filters)
+        "road_boundary=" +
+        str(road_boundary))
+    current_out_folder = os.path.join(current_out_folder, filter_type)
+    config_solver.OUT_FOLDER = current_out_folder
+    fig_folder = os.path.join(current_out_folder, "figure")
+    fig_prog_folder = os.path.join(fig_folder, "progress")
+    os.makedirs(fig_prog_folder, exist_ok=True)
+    copyfile(
+        config_file,
+        os.path.join(
+            current_out_folder,
+            'config.yaml'))
+    sys.stdout = PrintLogger(
+        os.path.join(
+            config_solver.OUT_FOLDER,
+            'log.txt'))
+    sys.stderr = PrintLogger(
+        os.path.join(
+            config_solver.OUT_FOLDER,
+            'log.txt'))
+
+    # config_current_cost = copy.deepcopy(config_ilqr_cost)
+    # if 'LR' in filter_type:
+    #     config_current_cost.W_ACCEL = 1e-4
+    #     config_current_cost.W_OMEGA = 1e-4
+    # config_current_cost.TRACK_WIDTH_RIGHT = road_boundary
+    # config_current_cost.TRACK_WIDTH_LEFT = road_boundary
+    # env.visual_extent[2] = -road_boundary
+    # env.visual_extent[3] = road_boundary
+    # cost = BicycleReachAvoid5DMargin(
+    #     config_current_cost, copy.deepcopy(
+    #         env.agent.dyn), filter_type=filter_type)
+    # env.cost = cost
+    # env.agent.init_policy(
+    #     policy_type=policy_type,
+    #     config=config_solver,
+    #     cost=cost,
+    #     task_cost=task_cost)
+    # Warms up jit again
+    env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
+
+    nominal_states, result, traj_info = env.simulate_one_trajectory(
+        T_rollout=max_iter_receding, end_criterion=end_criterion,
+        reset_kwargs=dict(state=x_cur),
+        rollout_step_callback=rollout_step_callback,
+        rollout_episode_callback=rollout_episode_callback,
+    )
+
+    print("result:", result)
+    print(traj_info['step_history'][-1]["done_type"])
+    constraints: Dict = traj_info['step_history'][-1]['constraints']
+    for k, v in constraints.items():
+        print(f"{k}: {v[0, 1]:.1e}")
+
+    # endregion
+
+    # region: Visualizes
+    gif_path = os.path.join(fig_folder, 'rollout.gif')
+    frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
+    with imageio.get_writer(gif_path, mode='I') as writer:
+        for i in range(len(nominal_states) - 1):
+            if frame_skip != 1 and (i + 1) % frame_skip != 0:
+                continue
+            filename = os.path.join(
+                fig_prog_folder, str(i + 1) + ".png")
+            image = imageio.imread(filename)
+            writer.append_data(image)
+            #Image(open(gif_path, 'rb').read(), width=400)
+    # endregion
+
+    return out_folder, plot_tag, config_agent
 
 
 if __name__ == "__main__":
@@ -334,7 +303,18 @@ if __name__ == "__main__":
     parser.set_defaults(naive_task=False)
 
     args = parser.parse_args()
-    main(
-        args.config_file,
-        args.road_boundary,
-        (not args.naive_task))
+
+    filters=['SoftCBF']
+    
+    out_folder, plot_tag, config_agent = None, None, None
+    for filter_type in filters:
+        out_folder, plot_tag, config_agent = main(args.config_file, args.road_boundary, filter_type=filter_type, is_task_ilqr=(not args.naive_task))
+
+    make_yaw_report(
+        out_folder,
+        plot_folder='./plots_summary/',
+        tag=plot_tag + "_" + str(args.road_boundary,),
+        road_boundary=args.road_boundary,
+        dt=config_agent.DT,
+        filters=filters)
+

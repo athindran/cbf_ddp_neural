@@ -3,7 +3,7 @@ import time
 import numpy as np
 import jax
 from jax import numpy as jnp
-from jaxlib.xla_extension import ArrayImpl as DeviceArray
+from jax import Array as DeviceArray
 from functools import partial
 
 from .ilqr_policy import iLQR
@@ -146,7 +146,7 @@ class iLQRReachability(iLQR):
     critical = jnp.zeros(shape=(self.N,), dtype=bool)
     critical = critical.at[self.N - 1].set(True)
     critical, reachable_margin = jax.lax.fori_loop(
-        1, self.N - 1, critical_pt, (critical, failure_margins[-1])
+        1, self.N, critical_pt, (critical, failure_margins[-1])
     )  # backward until timestep 1
     return critical, reachable_margin
 

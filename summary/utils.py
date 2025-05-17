@@ -343,7 +343,7 @@ def make_pvtol_animation_plots(env, state_history, solver_info, safety_plan, con
 
 def make_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder="./"):
-    if env.agent.dyn.id == "Bicycle5D" or env.agent.dyn.id == "Bicycle6D":
+    if env.agent.dyn.id == "Bicycle4D" or env.agent.dyn.id == "Bicycle5D":
         make_bic_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder)
     elif env.agent.dyn.id == "PVTOL6D":
@@ -736,10 +736,10 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     # ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
-    fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
+    # fig.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
     fig.savefig(
             plot_folder + tag + str(hide_label) + "_jax.png", dpi=200, 
             bbox_inches='tight', transparent=hide_label
@@ -1117,10 +1117,10 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     # ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
-    fig.savefig(
-            plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
-            bbox_inches='tight', transparent=hide_label
-        )
+    # fig.savefig(
+    #         plot_folder + tag + str(hide_label) + "_jaxs.pdf", dpi=200, 
+    #         bbox_inches='tight', transparent=hide_label
+    #     )
     fig.savefig(
             plot_folder + tag + str(hide_label) + "_jax.png", dpi=200, 
             bbox_inches='tight', transparent=hide_label

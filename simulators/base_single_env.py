@@ -211,15 +211,16 @@ class BaseSingleEnv(BaseEnv):
         state_history.append(self.state)
 
         prev_sol = None
-        prev_action = np.array([0.0, 0.0])
+        prev_ctrl = np.array([0.0, 0.0])
         for t in range(T_rollout):
             #kwargs['state'] = self.state.copy()
             start_time = time.time()
             action, solver_info = self.agent.get_action(
-                obs=obs, controls=controls_initialize, prev_sol=prev_sol, state=self.state, prev_action=prev_action
+                obs=obs, controls=controls_initialize,
+                prev_sol=prev_sol, state=self.state, prev_ctrl=prev_ctrl
             )
             solver_info['process_time'] = time.time() - start_time
-            prev_action = np.array( action )
+            prev_ctrl = np.array( action )
             prev_sol = solver_info
 
             if solver_info['mark_barrier_filter']:
@@ -302,7 +303,7 @@ class BaseSingleEnv(BaseEnv):
                 solver_iters_history=solver_iters_history, deviation_history=deviation_history, safety_metric_history=safety_metric_history,
                 safe_opt_history=safe_opt_history, task_ctrl_history=task_ctrl_history,
                 barrier_filter_indices=barrier_filter_indices, complete_filter_indices=complete_filter_indices,
-                label=self.agent.policy.filter_type
+                label=self.agent.safety_policy.filter_type
             )
         # Reverts to training setting.
         self.timeout = timeout_backup
