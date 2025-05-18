@@ -68,6 +68,9 @@ class WrappedBraxEnv(ABC):
         control_cycle_times = save_dict['process_times']
         values = save_dict['values']
         policy_type = save_dict['policy_type']
+        is_filter_active = save_dict['filter_active']
+        nsteps = states.shape[0]
+        range_space = np.arange(0, nsteps)
 
         if(self.env_name == 'reacher'):
             fig, axes = plt.subplots(2, 2, figsize=(9, 6), sharex=True)
@@ -93,6 +96,11 @@ class WrappedBraxEnv(ABC):
             axes[1].set_ylabel('Action 1')
             axes[1].set_xlabel('Timesteps')
             fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+            axes[0].fill_between(range_space, -0.25, 0.25,
+                                     where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+            axes[1].fill_between(range_space, -0.25, 0.25, 
+                                    where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+ 
             fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
             plt.close()
 
@@ -110,6 +118,9 @@ class WrappedBraxEnv(ABC):
             ax.plot(values)
             ax.set_ylabel('Reachability value')
             ax.set_xlabel('Timesteps')
+            ax.fill_between(range_space, -1.0, 200.0, 
+                                where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+            ax.set_ylim([-1.0, values.max()])
             fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
             fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'))
             plt.close()

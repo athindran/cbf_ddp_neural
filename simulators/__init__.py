@@ -24,6 +24,8 @@ from .costs.obs_margin import (
 
 from .policy.base_policy import BasePolicy
 
+from .policy.solver_utils import barrier_filter_linear, barrier_filter_quadratic
+
 from .dynamics.bicycle5d import Bicycle5D
 #from .pendulum.pendulum import Pendulum
 from .car.car_single import CarSingle5DEnv

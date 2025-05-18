@@ -15,7 +15,8 @@ from brax_utils import ( WrappedBraxEnv,
       ReacherRegularizedGoalCost, 
       iLQRBrax, 
       iLQRBraxReachability, 
-      ReacherReachabilityMargin )
+      iLQRBraxSafetyFilter,
+      ReacherReachabilityMargin, )
 
 from simulators import load_config
 sys.path.append(".")
@@ -27,7 +28,6 @@ def get_neural_policy(env_name, backend):
     }[env_name]
     brax_env = WrappedBraxEnv(env_name, backend)
     make_inference_fn, params, _ = train_fn(environment=brax_env.env)
-    eval_env = envs.create(env_name=env_name, backend=backend)
     params = model.load_params(f'./brax_utils/trained_models/{env_name}_params')
     inference_fn = make_inference_fn(params)
     jit_inference_fn = jax.jit(inference_fn)
@@ -78,12 +78,16 @@ def main(seed: int, policy_type="neural"):
       config_cost = config['cost']
       config_cost.N = config_solver.N
       reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
-      safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      #safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
       task_policy = get_neural_policy(env_name, backend)
+      brax_envs = [WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend)]
+      safety_filter =  iLQRBraxSafetyFilter(id=env_name, brax_envs=brax_envs, cost=reachability_cost, config=config_solver)
       # Warmup
       act_rng, rng = jax.random.split(rng)
-      task_policy(state.obs, act_rng)
-      safe_policy.get_action(state, controls=None)
+      task_ctrl, _ = task_policy(state.obs, act_rng)
+      safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, warmup=True)
+      prev_sol = None
+      prev_ctrl = np.array([0.0, 0.0])
       T = config_solver.MAX_ITER_RECEDING
 
     rollout = []
@@ -91,12 +95,13 @@ def main(seed: int, policy_type="neural"):
     actions_to_sys = np.zeros((T, brax_env.dim_u))
     gc_states_sys = np.zeros((T, brax_env.dim_x))
     values_sys = np.zeros((T,))
+    filter_active = np.full_like(values_sys, False)
     control_cycle_times = np.zeros((T, ))
     for idx in range(T):
       print(f"Starting time {idx}")
       rollout.append(state.pipeline_state)
       if policy_type=="neural":
-        act_rng, rng = jax.random.split(rng)
+        #act_rng, rng = jax.random.split(rng)
         time0 = time.time()
         act, _ = policy(state.obs, act_rng)
         control_cycle_times[idx] = time.time() - time0
@@ -112,9 +117,11 @@ def main(seed: int, policy_type="neural"):
         controls_init = jnp.array(solver_dict['reinit_controls'])
       elif policy_type=="ilqr_filter_with_neural_policy":
         time0 = time.time()
-        _, solver_dict = safe_policy.get_action(state, controls=controls_init)
-        act_rng, rng = jax.random.split(rng)
-        act, _ = task_policy(state.obs, act_rng)
+        task_ctrl, _ = task_policy(state.obs, act_rng)
+        act, solver_dict = safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_sol=prev_sol, prev_ctrl=prev_ctrl)
+        filter_active[idx] = solver_dict['mark_barrier_filter']
+        prev_sol = copy.deepcopy(solver_dict)
+        #act_rng, rng = jax.random.split(rng)
         control_cycle_times[idx] = time.time() - time0
         controls_init = jnp.array(solver_dict['reinit_controls'])
         values_sys[idx] = solver_dict['marginopt']
@@ -122,6 +129,7 @@ def main(seed: int, policy_type="neural"):
         #print(f"Gc coord: {brax_env.get_generalized_coordinates(state)}")
 
       state = brax_env.step(state, act)
+      prev_ctrl = np.array( act )
       actions_to_sys[idx] = np.array(act)
       gc_states_sys[idx] = np.array(brax_env.get_generalized_coordinates(state))
       print(f"Completed time {idx} with {control_cycle_times[idx]}s  control time")
@@ -145,13 +153,13 @@ def main(seed: int, policy_type="neural"):
         fps=1.0 / brax_env.env.dt / render_every)
     save_dict = {'policy_type': policy_type,  'gc_states': gc_states_sys, 
                   'actions': actions_to_sys, 'process_times': control_cycle_times,
-                  'values': values_sys}
+                  'values': values_sys, 'filter_active': filter_active}
     brax_env.plot_states_and_controls(save_dict, save_folder)
     np.save(os.path.join(save_folder, f'{policy_type}_save_data.npy'), save_dict)
 
 if __name__ == "__main__":
     for seed in range(5):
-      for policy_type in ["ilqr_filter_with_neural_policy"]:
+      for policy_type in [ "neural", "ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
         main(seed, policy_type=policy_type)
 

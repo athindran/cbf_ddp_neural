@@ -4,7 +4,7 @@ cost:
   # SAFETY COST PARAM
   W_1: 0.05
   W_2: 0.05
-  MAX_ANGULAR_VELOCITY: [11.0, 11.0]
+  MAX_ANGULAR_VELOCITY: [5.0, 5.0]
   SMOOTHING_TEMP: 2.0
 
 solver:
@@ -15,10 +15,11 @@ solver:
   # Baseline seems to be good enough for most cases.
   LINE_SEARCH: 'baseline'
   # Filter options: 'none', 'LR', 'CBF'
-  FILTER_TYPE: 'SoftCBF'
-  CBF_TYPE: 'quadratic'
-  CBF_GAMMA: 0.99
-  SOFT_CBF_GAMMA: 0.99
+  FILTER_TYPE: 'CBF'
+  CONSTRAINT_TYPE: 'quadratic'
+  CBF_GAMMA: 0.9
+  SOFT_CBF_GAMMA: 0.9
   LR_THRESHOLD: 0.0
-  OUT_FOLDER: exps_may/ilqr/pvtol6D/reachability_experiment_mulobs_config1/
+  #unused
+  OUT_FOLDER: exps_may/ilqr/reacher/reachability_experiment_mulobs_config1/
 
