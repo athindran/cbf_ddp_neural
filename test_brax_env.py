@@ -40,7 +40,6 @@ def main(seed: int, policy_type="neural"):
     brax_env = WrappedBraxEnv(env_name, backend)
     rng = jax.random.PRNGKey(seed=seed)
     state = brax_env.reset(rng=rng)
-    #print(f"State: {state}")
     save_folder = f"./brax_videos/reacher/seed_{seed}"
     if not os.path.exists(save_folder):
       os.makedirs(save_folder, exist_ok=True)
@@ -89,9 +88,30 @@ def main(seed: int, policy_type="neural"):
       prev_sol = None
       prev_ctrl = np.array([0.0, 0.0])
       T = config_solver.MAX_ITER_RECEDING
+    elif policy_type=="ilqr_filter_with_ilqr_policy":
+      config = load_config('./brax_utils/configs/reacher.yaml')
+      config_solver = config['solver']
+      config_cost = config['cost']
+      config_cost.N = config_solver.N
+      reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+      #safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      cost = ReacherRegularizedGoalCost(center=brax_env._get_obs(state.pipeline_state)[4:6], 
+                                          env=WrappedBraxEnv(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
+      task_policy = iLQRBrax(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=cost, config=config_solver)
+      brax_envs = [WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend)]
+      safety_filter =  iLQRBraxSafetyFilter(id=env_name, brax_envs=brax_envs, cost=reachability_cost, config=config_solver)
+      # Warmup
+      act_rng, rng = jax.random.split(rng)
+      task_ctrl, _ = task_policy.get_action(state, controls=None)
+      safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, warmup=True)
+      prev_sol = None
+      prev_ctrl = np.array([0.0, 0.0])
+      T = config_solver.MAX_ITER_RECEDING
+
 
     rollout = []
-    controls_init = None    
+    controls_init = None   
+    controls_init_task = None 
     actions_to_sys = np.zeros((T, brax_env.dim_u))
     gc_states_sys = np.zeros((T, brax_env.dim_x))
     values_sys = np.zeros((T,))
@@ -101,7 +121,7 @@ def main(seed: int, policy_type="neural"):
       print(f"Starting time {idx}")
       rollout.append(state.pipeline_state)
       if policy_type=="neural":
-        #act_rng, rng = jax.random.split(rng)
+        act_rng, rng = jax.random.split(rng)
         time0 = time.time()
         act, _ = policy(state.obs, act_rng)
         control_cycle_times[idx] = time.time() - time0
@@ -121,10 +141,21 @@ def main(seed: int, policy_type="neural"):
         act, solver_dict = safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_sol=prev_sol, prev_ctrl=prev_ctrl)
         filter_active[idx] = solver_dict['mark_barrier_filter']
         prev_sol = copy.deepcopy(solver_dict)
-        #act_rng, rng = jax.random.split(rng)
+        # act_rng, rng = jax.random.split(rng)
         control_cycle_times[idx] = time.time() - time0
         controls_init = jnp.array(solver_dict['reinit_controls'])
         values_sys[idx] = solver_dict['marginopt']
+      elif policy_type=="ilqr_filter_with_ilqr_policy":
+        time0 = time.time()
+        task_ctrl, solver_dict_task = task_policy.get_action(state, controls=controls_init_task)
+        controls_init_task = jnp.array(solver_dict_task['controls'])
+        act, solver_dict = safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_sol=prev_sol, prev_ctrl=prev_ctrl)
+        filter_active[idx] = solver_dict['mark_barrier_filter']
+        prev_sol = copy.deepcopy(solver_dict)
+        # act_rng, rng = jax.random.split(rng)
+        control_cycle_times[idx] = time.time() - time0
+        controls_init = jnp.array(solver_dict['reinit_controls'])
+        values_sys[idx] = solver_dict['marginopt']  
         #print(f"value: {solver_dict['marginopt']}")
         #print(f"Gc coord: {brax_env.get_generalized_coordinates(state)}")
 
@@ -159,7 +190,7 @@ def main(seed: int, policy_type="neural"):
 
 if __name__ == "__main__":
     for seed in range(5):
-      for policy_type in [ "neural", "ilqr_filter_with_neural_policy"]:
+      for policy_type in ["ilqr_filter_with_ilqr_policy", "ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
         main(seed, policy_type=policy_type)
 
