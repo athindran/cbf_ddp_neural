@@ -133,7 +133,7 @@ class iLQRBrax(BasePolicy):
                                          i], (X[:, i] - nominal_gc_states[:, i])
             )
             u = nominal_controls[:, i] + alpha * k_open_loop[:, i] + u_fb
-            u_clip = jnp.clip(u, min=jnp.array([-1.0, -1.0]), max=jnp.array([1.0, 1.0]))
+            u_clip = jnp.clip(u, min=-1*jnp.ones((self.dim_u,)), max=jnp.ones((self.dim_u,)))
             state_nxt = self.brax_env.step(state_prev, u_clip)
             state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(state_prev, u)
             X = X.at[:, i + 1].set(self.brax_env.get_generalized_coordinates(state_nxt))
@@ -159,7 +159,7 @@ class iLQRBrax(BasePolicy):
         @jax.jit
         def _rollout_nominal_step(i, args):
             X, U, fx, fu, state_prev = args
-            u_clip = jnp.clip(U[:, i], min=jnp.array([-1.0, -1.0]), max=jnp.array([1.0, 1.0]))
+            u_clip = jnp.clip(U[:, i], min=-1*jnp.ones((self.dim_u,)), max=jnp.ones((self.dim_u,)))
             state_nxt = self.brax_env.step(state_prev, u_clip)
             state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(state_prev, U[:, i])
             X = X.at[:, i + 1].set(self.brax_env.get_generalized_coordinates(state_nxt))

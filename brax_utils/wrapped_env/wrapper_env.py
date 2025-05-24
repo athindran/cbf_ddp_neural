@@ -17,7 +17,13 @@ class WrappedBraxEnv(ABC):
         if env_name=='reacher':
             self.dim_x = 4
             self.dim_u = 2
-            self.dim_gc_states = 2
+            self.dim_q_states = 2
+            self.dim_qd_states = 2
+        elif env_name=='ant':
+            self.dim_x = 29
+            self.dim_u = 8
+            self.dim_q_states = 15
+            self.dim_qd_states = 14
         else:
             # Raise not implemented error.
             pass
@@ -29,7 +35,7 @@ class WrappedBraxEnv(ABC):
     
     @partial(jax.jit, static_argnames='self')
     def get_generalized_coordinates(self, state) -> jax.Array:
-        return jnp.concatenate([state.pipeline_state.q[0:self.dim_gc_states], state.pipeline_state.qd[0:self.dim_gc_states]], axis=-1) 
+        return jnp.concatenate([state.pipeline_state.q[0:self.dim_q_states], state.pipeline_state.qd[0:self.dim_qd_states]], axis=-1) 
 
     @partial(jax.jit, static_argnames=['self'])
     def step_generalized_coordinates(self, state, action):
@@ -41,12 +47,12 @@ class WrappedBraxEnv(ABC):
     def get_generalized_coordinates_grad(self, state, action):
         state_grad = jax.jacobian(self.step_generalized_coordinates, argnums=0)(state, action).pipeline_state
         action_grad = jax.jacobian(self.step_generalized_coordinates, argnums=1)(state, action)
-        return jnp.concatenate([state_grad.q[..., 0:self.dim_gc_states], state_grad.qd[..., 0:self.dim_gc_states]], axis=-1), action_grad
+        return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states]], axis=-1), action_grad
 
     @partial(jax.jit, static_argnames=['self'])
     def get_obs_grad(self, pipeline_state):
         state_grad = jax.jacobian(self._get_obs, argnums=0)(pipeline_state)
-        return jnp.concatenate([state_grad.q[..., 0:self.dim_gc_states], state_grad.qd[..., 0:self.dim_gc_states]], axis=-1)
+        return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states]], axis=-1)
 
     @partial(jax.jit, static_argnames='self')    
     def reset(self, rng) -> jax.Array:
@@ -55,14 +61,6 @@ class WrappedBraxEnv(ABC):
     @partial(jax.jit, static_argnames='self')
     def _get_obs(self, pipeline_state: State) -> jax.Array:
         return self.env._get_obs(pipeline_state)
-
-    @partial(jax.jit, static_argnames='self')
-    def get_fingertip(self, generalized_coordinates: jax.Array) -> jax.Array:
-        assert self.env_name is 'reacher'
-        fingertip = jnp.zeros((2,))
-        fingertip = fingertip.at[0].set(0.1*jnp.cos(generalized_coordinates[0]) + 0.11*jnp.cos(generalized_coordinates[0] + generalized_coordinates[1]))
-        fingertip = fingertip.at[1].set(0.1*jnp.sin(generalized_coordinates[0]) + 0.11*jnp.sin(generalized_coordinates[0] + generalized_coordinates[1]))
-        return fingertip
 
     def plot_states_and_controls(self, save_dict, save_folder):
         states = save_dict['gc_states']
@@ -75,6 +73,7 @@ class WrappedBraxEnv(ABC):
         range_space = np.arange(0, nsteps)
 
         if(self.env_name == 'reacher'):
+            # TODO: Write a more general plotting script
             fig, axes = plt.subplots(2, 2, figsize=(9, 6), sharex=True)
             axes[0, 0].plot(states[:, 0])
             axes[0, 0].set_ylabel('q0')
@@ -126,4 +125,73 @@ class WrappedBraxEnv(ABC):
             fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
             fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'))
             plt.close()
+        elif (self.env_name=='ant'):
+            fig, axes = plt.subplots(4, 4, figsize=(22, 16), sharex=True)
+            for idx in range(self.dim_q_states):
+                row_id = int(idx/4)
+                col_id = idx - row_id*4
+                axes[row_id, col_id].plot(states[:, idx])
+                axes[row_id, col_id].set_ylabel(f'q {idx}')
+                axes[row_id, col_id].set_xlabel('Timesteps')
+                min_r = states[:, idx].min()
+                max_r = states[:, idx].max()
+                axes[row_id, col_id].fill_between(range_space, 1.2*min_r, 1.2*max_r,
+                                        where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+            fig.savefig(os.path.join(save_folder, f'{policy_type}_q_states.png'))
+            plt.close()
+        
+            fig, axes = plt.subplots(4, 4, figsize=(22, 16), sharex=True)
+            for idx in range(self.dim_qd_states):
+                row_id = int(idx/4)
+                col_id = idx - row_id*4
+                axes[row_id, col_id].plot(states[:, self.dim_q_states + idx])
+                axes[row_id, col_id].set_ylabel(f'qd {idx}')
+                axes[row_id, col_id].set_xlabel('Timesteps')
+                min_r = states[:, self.dim_q_states + idx].min()
+                max_r = states[:, self.dim_q_states + idx].max()
+                axes[row_id, col_id].fill_between(range_space, 1.2*min_r, 1.2*max_r,
+                                        where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+            fig.savefig(os.path.join(save_folder, f'{policy_type}_qd_states.png'))
+            plt.close()
+
+            fig, axes = plt.subplots(2, 4, figsize=(18, 9))
+            for idx in range(self.dim_u):
+                row_id = int(idx/4)
+                col_id = idx - row_id*4
+                axes[row_id, col_id].plot(ctrls[:, idx])
+                axes[row_id, col_id].set_ylabel(f'Action {idx}')
+                axes[row_id, col_id].set_xlabel('Timesteps')
+                axes[row_id, col_id].set_ylim([-1.0, 1.0])
+                axes[row_id, col_id].fill_between(range_space, -1.0, 1.0,
+                                        where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+            fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
+            plt.close()
+
+            fig = plt.figure(figsize=(5.5, 3.5))
+            ax = plt.gca()
+            ax.plot(control_cycle_times)
+            ax.set_ylabel('Cycle time(s)')
+            ax.set_xlabel('Timesteps')
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+            fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'))
+            plt.close()
+
+            fig = plt.figure(figsize=(5.5, 3.5))
+            ax = plt.gca()
+            ax.plot(values)
+            ax.set_ylabel('Reachability value')
+            ax.set_xlabel('Timesteps')
+            ax.fill_between(range_space, -0.1, values.max()*2.0, 
+                                where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+            ax.set_ylim([-1.0, values.max()*2.0])
+            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+            fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'), bbox_inches='tight')
+            plt.close()
+
 

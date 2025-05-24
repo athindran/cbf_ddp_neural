@@ -9,7 +9,7 @@ import numpy as np
 from .ilqr_reachavoid_policy import iLQRReachAvoid
 from .ilqr_reachability_policy import iLQRReachability
 from .base_policy import BasePolicy
-from .solver_utils import barrier_filter_linear, barrier_filter_quadratic
+from .solver_utils import barrier_filter_linear, barrier_filter_quadratic_two, barrier_filter_quadratic_eight
 from simulators.dynamics.base_dynamics import BaseDynamics
 from simulators.costs.base_margin import BaseMargin
 
@@ -157,7 +157,7 @@ class iLQRSafetyFilter(BasePolicy):
 
             control_cbf_cand = task_ctrl
 
-            solver_initial = np.zeros((2,))
+            solver_initial = np.zeros((self.dim_u,))
             if prev_sol is not None:
                 solver_initial = (prev_ctrl - control_cbf_cand)
 
@@ -181,7 +181,7 @@ class iLQRSafetyFilter(BasePolicy):
 
             # Exit loop once CBF constraint satisfied or maximum iterations
             # violated
-            control_bias_term = np.zeros((2,))
+            control_bias_term = np.zeros((self.dim_u,))
             while((constraint_violation < cbf_tol or warmup) and num_iters < 5):
                 num_iters = num_iters + 1
 
@@ -206,8 +206,12 @@ class iLQRSafetyFilter(BasePolicy):
                     # Controls improvement direction
                     # limits = np.array( [[self.dyn.ctrl_space[0, 0] - control_cbf_cand[0], self.dyn.ctrl_space[0, 1] - control_cbf_cand[0]],
                     #          [self.dyn.ctrl_space[1, 0] - control_cbf_cand[1], self.dyn.ctrl_space[1, 1] - control_cbf_cand[1]]] )
-                    control_correction = barrier_filter_quadratic(
-                        P, p, scaled_c, initialize=solver_initial, control_bias_term=control_bias_term)
+                    if self.dim_u==2:
+                        control_correction = barrier_filter_quadratic_two(
+                            P, p, scaled_c, initialize=solver_initial, control_bias_term=control_bias_term)
+                    elif self.dim_u==8:
+                        control_correction = barrier_filter_quadratic_eight(
+                            P, p, scaled_c, initialize=solver_initial, control_bias_term=control_bias_term)    
                 elif self.constraint_type == 'linear':
                     control_correction = barrier_filter_linear(
                         grad_x, B0, scaled_c)

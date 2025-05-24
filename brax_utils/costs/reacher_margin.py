@@ -9,10 +9,16 @@ from simulators import BaseMargin, CircleObsMargin, QuadraticControlCost
 from simulators import LowerHalfMargin, UpperHalfMargin
 
 class ReacherGoalCost(BaseMargin):
-    def __init__(self, center: Array, env: WrappedBraxEnv):
+    def __init__(self, center: Array):
         super().__init__()
         self.center = center        
-        self.env = env
+
+    @partial(jax.jit, static_argnames='self')
+    def get_fingertip(self, generalized_coordinates: jax.Array) -> jax.Array:
+        fingertip = jnp.zeros((2,))
+        fingertip = fingertip.at[0].set(0.1*jnp.cos(generalized_coordinates[0]) + 0.11*jnp.cos(generalized_coordinates[0] + generalized_coordinates[1]))
+        fingertip = fingertip.at[1].set(0.1*jnp.sin(generalized_coordinates[0]) + 0.11*jnp.sin(generalized_coordinates[0] + generalized_coordinates[1]))
+        return fingertip
 
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
@@ -27,7 +33,7 @@ class ReacherGoalCost(BaseMargin):
         Returns:
             Array: scalar.
         """
-        fingertip = self.env.get_fingertip(state)
+        fingertip = self.get_fingertip(state)
         cost = (self.center[0] - fingertip[0])**2 + (self.center[1] - fingertip[1])**2
 
         return cost
@@ -53,7 +59,7 @@ class ReacherRegularizedGoalCost(BaseMargin):
         super().__init__()
         self.dim_x = env.dim_x
         self.dim_u = env.dim_u
-        self.goal_cost = ReacherGoalCost(center, env)
+        self.goal_cost = ReacherGoalCost(center)
         self.ctrl_cost = QuadraticControlCost(R = ctrl_cost_matrix, r = jnp.zeros(self.dim_u))
 
     @partial(jax.jit, static_argnames='self')
@@ -95,7 +101,7 @@ class ReacherRegularizedGoalCost(BaseMargin):
 
         return target_cost + ctrl_cost
 
-class ReacherConstraintCost(BaseMargin):
+class ReacherAngularVelocityConstraintCost(BaseMargin):
     def __init__(self, config, env: WrappedBraxEnv):
         super().__init__()
         self.dim_x = env.dim_x
@@ -138,14 +144,8 @@ class ReacherReachabilityMargin(BaseMargin):
 
     def __init__(self, config, env: WrappedBraxEnv, filter_type: str ='CBF'):
         super().__init__()
-        # Removing the square
-        # if filter_type == 'SoftCBF' or filter_type=='SoftLR':
-        #     self.constraint = Bicycle5DSoftConstraintMargin(config, env)
-        # else:
-        self.constraint = ReacherConstraintCost(config, env)
-
-        if env.dim_u == 2:
-            R = jnp.array([[config.W_1, 0.0], [0.0, config.W_2]])
+        self.constraint = ReacherAngularVelocityConstraintCost(config, env)
+        R = jnp.array([[config.W_1, 0.0], [0.0, config.W_2]])
         self.ctrl_cost = QuadraticControlCost(R=R, r=jnp.zeros(env.dim_u))
         self.constraint.ctrl_cost = QuadraticControlCost(
             R=R, r=jnp.zeros(env.dim_u))
