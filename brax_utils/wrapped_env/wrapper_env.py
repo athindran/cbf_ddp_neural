@@ -17,6 +17,7 @@ class WrappedBraxEnv(ABC):
         if env_name=='reacher':
             self.dim_x = 4
             self.dim_u = 2
+            self.dim_gc_states = 2
         else:
             # Raise not implemented error.
             pass
@@ -28,7 +29,7 @@ class WrappedBraxEnv(ABC):
     
     @partial(jax.jit, static_argnames='self')
     def get_generalized_coordinates(self, state) -> jax.Array:
-        return jnp.concatenate([state.pipeline_state.q[0:2], state.pipeline_state.qd[0:2]], axis=-1) 
+        return jnp.concatenate([state.pipeline_state.q[0:self.dim_gc_states], state.pipeline_state.qd[0:self.dim_gc_states]], axis=-1) 
 
     @partial(jax.jit, static_argnames=['self'])
     def step_generalized_coordinates(self, state, action):
@@ -40,12 +41,12 @@ class WrappedBraxEnv(ABC):
     def get_generalized_coordinates_grad(self, state, action):
         state_grad = jax.jacobian(self.step_generalized_coordinates, argnums=0)(state, action).pipeline_state
         action_grad = jax.jacobian(self.step_generalized_coordinates, argnums=1)(state, action)
-        return jnp.concatenate([state_grad.q[..., 0:2], state_grad.qd[..., 0:2]], axis=-1), action_grad
+        return jnp.concatenate([state_grad.q[..., 0:self.dim_gc_states], state_grad.qd[..., 0:self.dim_gc_states]], axis=-1), action_grad
 
     @partial(jax.jit, static_argnames=['self'])
     def get_obs_grad(self, pipeline_state):
         state_grad = jax.jacobian(self._get_obs, argnums=0)(pipeline_state)
-        return jnp.concatenate([state_grad.q[..., 0:2], state_grad.qd[..., 0:2]], axis=-1)
+        return jnp.concatenate([state_grad.q[..., 0:self.dim_gc_states], state_grad.qd[..., 0:self.dim_gc_states]], axis=-1)
 
     @partial(jax.jit, static_argnames='self')    
     def reset(self, rng) -> jax.Array:
@@ -57,6 +58,7 @@ class WrappedBraxEnv(ABC):
 
     @partial(jax.jit, static_argnames='self')
     def get_fingertip(self, generalized_coordinates: jax.Array) -> jax.Array:
+        assert self.env_name is 'reacher'
         fingertip = jnp.zeros((2,))
         fingertip = fingertip.at[0].set(0.1*jnp.cos(generalized_coordinates[0]) + 0.11*jnp.cos(generalized_coordinates[0] + generalized_coordinates[1]))
         fingertip = fingertip.at[1].set(0.1*jnp.sin(generalized_coordinates[0]) + 0.11*jnp.sin(generalized_coordinates[0] + generalized_coordinates[1]))
