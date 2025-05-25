@@ -22,9 +22,6 @@ class iLQRBraxReachability(iLQRBrax):
     if controls is None:
         controls_np = np.random.rand(self.dim_u, self.N)
         controls = jnp.array(controls_np)
-    else:
-        assert controls.shape[1] == self.N
-        controls = jnp.array(controls)
 
     # Rolls out the nominal trajectory and gets the initial cost.
     gc_states, controls, fx, fu = self.rollout_nominal(
