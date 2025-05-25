@@ -80,7 +80,7 @@ class WrappedBraxEnv(ABC):
         ncols = math.ceil(self.dim_q_states/nrows)
         figsize = {'ant': (22, 16), 'reacher': (9, 4)}
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name], sharex=True)
-        axes = axes[:]
+        axes = axes.ravel()
         for idx in range(self.dim_q_states):
             axes[idx].plot(states[:, idx])
             axes[idx].set_ylabel(f'q {idx}')
@@ -98,7 +98,7 @@ class WrappedBraxEnv(ABC):
         ncols = math.ceil(self.dim_qd_states/nrows)
         figsize = {'ant': (22, 16), 'reacher': (9, 4)}
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name], sharex=True)
-        axes = axes[:]
+        axes = axes.ravel()
         for idx in range(self.dim_qd_states):
             axes[idx].plot(states[:, self.dim_q_states + idx])
             axes[idx].set_ylabel(f'qd {idx}')
@@ -118,7 +118,7 @@ class WrappedBraxEnv(ABC):
         ncols = math.ceil(self.dim_u/nrows)
 
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name])
-        axes = axes[:]
+        axes = axes.ravel()
         for idx in range(self.dim_u):
             axes[idx].plot(ctrls[:, idx])
             axes[idx].set_ylabel(f'Action {idx}')
@@ -145,9 +145,9 @@ class WrappedBraxEnv(ABC):
         ax.plot(values)
         ax.set_ylabel('Reachability value')
         ax.set_xlabel('Timesteps')
-        ax.fill_between(range_space, -0.1, values.max()*2.0, 
+        ax.fill_between(range_space, values.min(), values.max()*2.0, 
                             where=is_filter_active[0:nsteps], color='b', alpha=0.35)
-        ax.set_ylim([-1.0, values.max()*2.0])
+        ax.set_ylim([values.min(), values.max()*2.0])
         fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
         fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'), bbox_inches='tight')
         plt.close()
