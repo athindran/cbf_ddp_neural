@@ -8,6 +8,7 @@ from abc import ABC
 from matplotlib import pyplot as plt
 import numpy as np
 import os
+import math
 
 
 class WrappedBraxEnv(ABC):
@@ -72,126 +73,81 @@ class WrappedBraxEnv(ABC):
         nsteps = states.shape[0]
         range_space = np.arange(0, nsteps)
 
-        if(self.env_name == 'reacher'):
-            # TODO: Write a more general plotting script
-            fig, axes = plt.subplots(2, 2, figsize=(9, 6), sharex=True)
-            axes[0, 0].plot(states[:, 0])
-            axes[0, 0].set_ylabel('q0')
-            axes[0, 1].plot(states[:, 1])
-            axes[0, 1].set_ylabel('q1')
-            axes[1, 0].plot(states[:, 2])
-            axes[1, 0].set_ylabel('q0d')
-            axes[1, 1].plot(states[:, 3])
-            axes[1, 1].set_ylabel('q1d')
-            axes[1, 0].set_xlabel('Timesteps')
-            axes[1, 1].set_xlabel('Timesteps')
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_states.png'))
-            plt.close()
-
-            fig, axes = plt.subplots(1, 2, figsize=(9, 4))
-            axes[0].plot(ctrls[:, 0])
-            axes[0].set_ylabel('Action 0')
-            axes[0].set_xlabel('Timesteps')
-            axes[1].plot(ctrls[:, 1])
-            axes[1].set_ylabel('Action 1')
-            axes[1].set_xlabel('Timesteps')
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            axes[0].fill_between(range_space, -0.25, 0.25,
-                                     where=is_filter_active[0:nsteps], color='b', alpha=0.35)
-            axes[1].fill_between(range_space, -0.25, 0.25, 
+        rowdict = {'ant': 4, 'reacher': 2}
+        nrows = rowdict[self.env_name]
+        ncols = math.ceil(self.dim_q_states/nrows)
+        figsize = {'ant': (22, 16), 'reacher': (9, 4)}
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name], sharex=True)
+        axes = axes[:]
+        for idx in range(self.dim_q_states):
+            axes[idx].plot(states[:, idx])
+            axes[idx].set_ylabel(f'q {idx}')
+            axes[idx].set_xlabel('Timesteps')
+            min_r = states[:, idx].min()
+            max_r = states[:, idx].max()
+            axes[idx].fill_between(range_space, 1.2*min_r, 1.2*max_r,
                                     where=is_filter_active[0:nsteps], color='b', alpha=0.35)
- 
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
-            plt.close()
 
-            fig = plt.figure(figsize=(5.5, 3.5))
-            ax = plt.gca()
-            ax.plot(control_cycle_times)
-            ax.set_ylabel('Cycle time(s)')
-            ax.set_xlabel('Timesteps')
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'))
-            plt.close()
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_q_states.png'))
+        plt.close()
 
-            fig = plt.figure(figsize=(5.5, 3.5))
-            ax = plt.gca()
-            ax.plot(values)
-            ax.set_ylabel('Reachability value')
-            ax.set_xlabel('Timesteps')
-            ax.fill_between(range_space, -1.0, 200.0, 
-                                where=is_filter_active[0:nsteps], color='b', alpha=0.35)
-            ax.set_ylim([-1.0, values.max()])
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'))
-            plt.close()
-        elif (self.env_name=='ant'):
-            fig, axes = plt.subplots(4, 4, figsize=(22, 16), sharex=True)
-            for idx in range(self.dim_q_states):
-                row_id = int(idx/4)
-                col_id = idx - row_id*4
-                axes[row_id, col_id].plot(states[:, idx])
-                axes[row_id, col_id].set_ylabel(f'q {idx}')
-                axes[row_id, col_id].set_xlabel('Timesteps')
-                min_r = states[:, idx].min()
-                max_r = states[:, idx].max()
-                axes[row_id, col_id].fill_between(range_space, 1.2*min_r, 1.2*max_r,
-                                        where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+        nrows = rowdict[self.env_name]
+        ncols = math.ceil(self.dim_qd_states/nrows)
+        figsize = {'ant': (22, 16), 'reacher': (9, 4)}
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name], sharex=True)
+        axes = axes[:]
+        for idx in range(self.dim_qd_states):
+            axes[idx].plot(states[:, self.dim_q_states + idx])
+            axes[idx].set_ylabel(f'qd {idx}')
+            axes[idx].set_xlabel('Timesteps')
+            min_r = states[:, self.dim_q_states + idx].min()
+            max_r = states[:, self.dim_q_states + idx].max()
+            axes[idx].fill_between(range_space, 1.2*min_r, 1.2*max_r,
+                                    where=is_filter_active[0:nsteps], color='b', alpha=0.35)
 
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_q_states.png'))
-            plt.close()
-        
-            fig, axes = plt.subplots(4, 4, figsize=(22, 16), sharex=True)
-            for idx in range(self.dim_qd_states):
-                row_id = int(idx/4)
-                col_id = idx - row_id*4
-                axes[row_id, col_id].plot(states[:, self.dim_q_states + idx])
-                axes[row_id, col_id].set_ylabel(f'qd {idx}')
-                axes[row_id, col_id].set_xlabel('Timesteps')
-                min_r = states[:, self.dim_q_states + idx].min()
-                max_r = states[:, self.dim_q_states + idx].max()
-                axes[row_id, col_id].fill_between(range_space, 1.2*min_r, 1.2*max_r,
-                                        where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_qd_states.png'))
+        plt.close()
 
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_qd_states.png'))
-            plt.close()
+        rowdict = {'ant': 2, 'reacher': 1}
+        figsize = {'ant': (18, 9), 'reacher': (9, 4)}
+        nrows = rowdict[self.env_name]
+        ncols = math.ceil(self.dim_u/nrows)
 
-            fig, axes = plt.subplots(2, 4, figsize=(18, 9))
-            for idx in range(self.dim_u):
-                row_id = int(idx/4)
-                col_id = idx - row_id*4
-                axes[row_id, col_id].plot(ctrls[:, idx])
-                axes[row_id, col_id].set_ylabel(f'Action {idx}')
-                axes[row_id, col_id].set_xlabel('Timesteps')
-                axes[row_id, col_id].set_ylim([-1.0, 1.0])
-                axes[row_id, col_id].fill_between(range_space, -1.0, 1.0,
-                                        where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name])
+        axes = axes[:]
+        for idx in range(self.dim_u):
+            axes[idx].plot(ctrls[:, idx])
+            axes[idx].set_ylabel(f'Action {idx}')
+            axes[idx].set_xlabel('Timesteps')
+            axes[idx].set_ylim([-1.0, 1.0])
+            axes[idx].fill_between(range_space, -1.0, 1.0,
+                                    where=is_filter_active[0:nsteps], color='b', alpha=0.35)
 
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
-            plt.close()
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
+        plt.close()
 
-            fig = plt.figure(figsize=(5.5, 3.5))
-            ax = plt.gca()
-            ax.plot(control_cycle_times)
-            ax.set_ylabel('Cycle time(s)')
-            ax.set_xlabel('Timesteps')
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'))
-            plt.close()
+        fig = plt.figure(figsize=(5.5, 3.5))
+        ax = plt.gca()
+        ax.plot(control_cycle_times)
+        ax.set_ylabel('Cycle time(s)')
+        ax.set_xlabel('Timesteps')
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'))
+        plt.close()
 
-            fig = plt.figure(figsize=(5.5, 3.5))
-            ax = plt.gca()
-            ax.plot(values)
-            ax.set_ylabel('Reachability value')
-            ax.set_xlabel('Timesteps')
-            ax.fill_between(range_space, -0.1, values.max()*2.0, 
-                                where=is_filter_active[0:nsteps], color='b', alpha=0.35)
-            ax.set_ylim([-1.0, values.max()*2.0])
-            fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-            fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'), bbox_inches='tight')
-            plt.close()
+        fig = plt.figure(figsize=(5.5, 3.5))
+        ax = plt.gca()
+        ax.plot(values)
+        ax.set_ylabel('Reachability value')
+        ax.set_xlabel('Timesteps')
+        ax.fill_between(range_space, -0.1, values.max()*2.0, 
+                            where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+        ax.set_ylim([-1.0, values.max()*2.0])
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'), bbox_inches='tight')
+        plt.close()
 
 
