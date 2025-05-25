@@ -32,7 +32,7 @@ class AntConstraintCost(BaseMargin):
         """
         cost = jnp.inf
 
-        for idx in range(self.dim_q_states, self.dim_q_states + self.dim_qd_states):
+        for idx in range(self.dim_q_states, self.dim_q_states + 2):
             cost = jnp.minimum(cost, self.max_velocity[idx - self.dim_q_states]**2 - state[idx]**2)
 
         return cost
