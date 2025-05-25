@@ -9,7 +9,7 @@ cost:
 
 solver:
   N: 15
-  MAX_ITER: 20
+  MAX_ITER: 10
   MAX_ITER_RECEDING: 100
   # Line search options: 'baseline'.
   # Baseline seems to be good enough for most cases.

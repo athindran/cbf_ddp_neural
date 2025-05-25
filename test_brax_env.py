@@ -35,6 +35,21 @@ def get_neural_policy(env_name, backend):
     jit_inference_fn = jax.jit(inference_fn)
     return jit_inference_fn
 
+def warmup_safety_filter_with_task_policy_rollout(rng, state, brax_env, task_policy, safety_filter):
+    """
+    Warmup safety filter by running a few time along the task policy rollout. 
+    This is a substitute for the rejection sampling that was used in the bicycle dynamics.
+    """
+    act_rng, rng = jax.random.split(rng)
+    task_ctrl, _ = task_policy(state.obs, act_rng)
+    safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )), warmup=True)
+
+    # Substitute for rejection sampling
+    for _ in range(10):
+      task_ctrl, _ = task_policy(state.obs, act_rng)
+      safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )))
+      state = brax_env.step(state, task_ctrl)
+
 
 def main(seed: int, env_name='reacher', policy_type="neural"):
     # @param ['ant', 'halfcheetah', 'hopper', 'humanoid', 'humanoidstandup', 'inverted_pendulum', 'inverted_double_pendulum', 'pusher', 'reacher', 'walker2d']
@@ -50,8 +65,25 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       policy = get_neural_policy(env_name, backend)
       # Warmup
       act_rng, rng = jax.random.split(rng)
-      policy(state.obs, act_rng)
-      T = 100
+      task_ctrl, _ = policy(state.obs, act_rng)
+
+      # Load safety filter for logging value function
+      config = load_config(f'./brax_utils/configs/{env_name}.yaml')
+      config_solver = config['solver']
+      config_cost = config['cost']
+      config_cost.N = config_solver.N
+      reachability_cost = None
+      if env_name=="reacher":
+        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+      elif env_name=="ant":
+        reachability_cost = AntReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+      else:
+        raise NotImplementedError("Other environments not implemented.")
+
+      safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      # Warmup
+      safe_policy.get_action(state, controls=None)
+      T = config_solver.MAX_ITER_RECEDING
     elif policy_type=="ilqr":
       assert env_name=="reacher"
       config = load_config(f'./brax_utils/configs/{env_name}.yaml')
@@ -100,6 +132,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       safety_filter =  iLQRBraxSafetyFilter(id=env_name, brax_envs=brax_envs, cost=reachability_cost, config=config_solver)
 
       # Warmup
+      warmup_safety_filter_with_task_policy_rollout(rng, state, brax_env, task_policy, safety_filter)
       act_rng, rng = jax.random.split(rng)
       task_ctrl, _ = task_policy(state.obs, act_rng)
       safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )), warmup=True)
@@ -144,6 +177,11 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
         time0 = time.time()
         act, _ = policy(state.obs, act_rng)
         control_cycle_times[idx] = time.time() - time0
+
+        # Run safety filter to get value function
+        _, solver_dict = safe_policy.get_action(state, controls=controls_init)
+        values_sys[idx] = solver_dict['marginopt']
+        controls_init = jnp.asarray(solver_dict['reinit_controls'])
       elif policy_type=="ilqr":
         time0 = time.time()
         act, solver_dict = policy.get_action(state, controls=controls_init)
@@ -210,7 +248,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
 
 if __name__ == "__main__":
     for seed in range(5):
-      for policy_type in ["ilqr_filter_with_ilqr_policy", "ilqr_filter_with_neural_policy"]:
+      for policy_type in ["neural", "ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
         env_name = 'reacher'
         main(seed, env_name=env_name, policy_type=policy_type)
