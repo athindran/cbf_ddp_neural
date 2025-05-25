@@ -162,7 +162,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
             control_bias_term = control_bias_term + control_correction
             control_cbf_cand = control_cbf_cand + \
                 np.array(control_correction)
-            control_cbf_cand = np.clip(control_cbf_cand, -1.0*np.ones((self.dim_u,)), np.ones((self.dim_u,)))
+            control_cbf_cand = np.clip(control_cbf_cand, self.brax_env.action_limits[0], self.brax_env.action_limits[1])
 
             # Restart from current point and run again
             solver_initial = (prev_ctrl - control_cbf_cand)

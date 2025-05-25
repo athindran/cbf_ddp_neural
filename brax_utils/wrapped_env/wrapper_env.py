@@ -20,11 +20,13 @@ class WrappedBraxEnv(ABC):
             self.dim_u = 2
             self.dim_q_states = 2
             self.dim_qd_states = 2
+            self.action_limits = np.array([[-1., -1.], [1., 1.]])
         elif env_name=='ant':
             self.dim_x = 29
             self.dim_u = 8
             self.dim_q_states = 15
             self.dim_qd_states = 14
+            self.action_limits = np.array([[-1., -1., -1., -1., -1., -1., -1., -1.], [1., 1., 1., 1., 1., 1., 1., 1.]])
         else:
             # Raise not implemented error.
             pass
