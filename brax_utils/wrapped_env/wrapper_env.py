@@ -9,17 +9,17 @@ from matplotlib import pyplot as plt
 import numpy as np
 import os
 import math
-
+import dataclasses
 
 class WrappedBraxEnv(ABC):
     def __init__(self, env_name, backend) -> None:
         self.env = envs.get_environment(env_name=env_name,
                            backend=backend)
         if env_name=='reacher':
-            self.dim_x = 4
+            self.dim_x = 8
             self.dim_u = 2
-            self.dim_q_states = 2
-            self.dim_qd_states = 2
+            self.dim_q_states = 4
+            self.dim_qd_states = 4
             self.action_limits = np.array([[-1., -1.], [1., 1.]])
         elif env_name=='ant':
             self.dim_x = 29
@@ -31,6 +31,8 @@ class WrappedBraxEnv(ABC):
             # Raise not implemented error.
             pass
         self.env_name = env_name
+        rng = jax.random.PRNGKey(seed=0)
+        self.proxy_state = self.reset(rng=rng)
     
     @partial(jax.jit, static_argnames='self')
     def step(self, state, action) -> jax.Array:
@@ -38,23 +40,24 @@ class WrappedBraxEnv(ABC):
     
     @partial(jax.jit, static_argnames='self')
     def get_generalized_coordinates(self, state) -> jax.Array:
-        return jnp.concatenate([state.pipeline_state.qpos[0:self.dim_q_states], state.pipeline_state.qvel[0:self.dim_qd_states]], axis=-1) 
+        return jnp.concatenate([state.pipeline_state.q[0:self.dim_q_states], state.pipeline_state.qd[0:self.dim_qd_states]], axis=-1) 
 
     @partial(jax.jit, static_argnames=['self'])
-    def step_generalized_coordinates(self, state, qpos, qvel, action):
-        pipeline_state_qqd = state.pipeline_state.tree_replace({'qpos': qpos, 'qvel': qvel})
-        state_qqd = state.tree_replace({'pipeline_state': pipeline_state_qqd})
+    def step_generalized_coordinates(self, qpos, qvel, action):
+        #pipeline_state_qqd = self.proxy_state.pipeline_state.tree_replace({'qpos': qpos, 'qvel': qvel, 'time': time})
+        pipeline_state_qqd = self.proxy_state.pipeline_state.replace(qpos=qpos, qvel=qvel)
+        state_qqd = self.proxy_state.replace(pipeline_state=pipeline_state_qqd)
         new_state = self.env.step(state_qqd, action)
         new_generalized_coordinates = self.get_generalized_coordinates(new_state)
         return new_generalized_coordinates
     
     @partial(jax.jit, static_argnames=['self'])
-    def get_generalized_coordinates_grad(self, state, action):
-        qpos = jnp.array(state.pipeline_state.qpos)
-        qvel = jnp.array(state.pipeline_state.qvel)
-        q_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=1)(state, qpos, qvel,  action)
-        qd_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=2)(state, qpos, qvel, action)
-        action_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=3)(state, qpos, qvel, action)
+    def get_generalized_coordinates_grad(self, qpos, qvel, action):
+        qpos = jnp.array(qpos)
+        qvel = jnp.array(qvel)
+        q_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=0)(qpos, qvel,  action)
+        qd_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=1)(qpos, qvel, action)
+        action_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=2)(qpos, qvel, action)
         return jnp.concatenate([q_grad[..., 0:self.dim_q_states], qd_grad[..., 0:self.dim_qd_states]], axis=-1), action_grad
 
     @partial(jax.jit, static_argnames=['self'])
