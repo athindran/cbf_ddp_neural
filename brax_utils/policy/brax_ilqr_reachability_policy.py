@@ -88,17 +88,17 @@ class iLQRBraxReachability(iLQRBrax):
 
     @jax.jit
     def run_forward_pass(args):
-      gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new = args
+      alpha, J, J_new = args
       alpha = beta*alpha
       _, _, _, _, J_new, _, _, _ = self.forward_pass(initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha)
-      return gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new
+      return alpha, J, J_new
 
     @jax.jit
     def check_terminated(args):
-      _, _, _, _, alpha, J, J_new = args
+      alpha, J, J_new = args
       return jnp.logical_and( alpha>self.min_alpha, J_new<J )
     
-    gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new = jax.lax.while_loop(check_terminated, run_forward_pass, (gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new))
+    alpha, J, J_new = jax.lax.while_loop(check_terminated, run_forward_pass, (alpha, J, J_new))
 
     return alpha
 
@@ -136,6 +136,7 @@ class iLQRBraxReachability(iLQRBrax):
     )  # backward until timestep 1
     return critical, reachable_margin
 
+  @partial(jax.jit, static_argnames='self')
   def forward_pass(
       self, initial_state, nominal_gc_states: DeviceArray, nominal_controls: DeviceArray,
       K_closed_loop: DeviceArray, k_open_loop: DeviceArray, alpha: float
