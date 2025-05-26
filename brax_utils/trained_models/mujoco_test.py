@@ -9,7 +9,7 @@ from brax.training.agents.ppo import train as ppo
 from brax.training.agents.sac import train as sac
 
 env_name = 'reacher'  # @param ['ant', 'halfcheetah', 'hopper', 'humanoid', 'humanoidstandup', 'inverted_pendulum', 'inverted_double_pendulum', 'pusher', 'reacher', 'walker2d']
-backend = 'generalized'  # @param ['generalized', 'positional', 'spring']
+backend = 'mjx'  # @param ['generalized', 'positional', 'spring']
 
 env = envs.get_environment(env_name=env_name,
                            backend=backend)
@@ -18,7 +18,7 @@ state = jax.jit(env.reset)(rng=jax.random.PRNGKey(seed=0))
 train_fn = {
   'inverted_pendulum': functools.partial(ppo.train, num_timesteps=1, num_evals=20, reward_scaling=10, episode_length=1000, normalize_observations=True, action_repeat=1, unroll_length=5, num_minibatches=32, num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=2048, batch_size=1024, seed=1),
   'inverted_double_pendulum': functools.partial(ppo.train, num_timesteps=1, num_evals=20, reward_scaling=10, episode_length=1000, normalize_observations=True, action_repeat=1, unroll_length=5, num_minibatches=32, num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=2048, batch_size=1024, seed=1),
-  'ant': functools.partial(ppo.train,  num_timesteps=1, num_evals=1, reward_scaling=10, episode_length=1000, normalize_observations=True, action_repeat=1, unroll_length=5, num_minibatches=0, num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=4096, batch_size=2048, seed=1),
+  'ant': functools.partial(ppo.train,  num_timesteps=1, num_evals=1, reward_scaling=10, episode_length=1000, normalize_observations=True, action_repeat=1, unroll_length=5, num_minibatches=1, num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=1, batch_size=2048, seed=1),
   'humanoid': functools.partial(ppo.train,  num_timesteps=1, num_evals=1, reward_scaling=0.1, episode_length=1000, normalize_observations=True, action_repeat=1, unroll_length=10, num_minibatches=0, num_updates_per_batch=8, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-3, num_envs=2048, batch_size=1024, seed=1),
   'reacher': functools.partial(ppo.train, num_timesteps=1, num_evals=1, reward_scaling=5, episode_length=1000, normalize_observations=True, action_repeat=4, unroll_length=50, num_minibatches=1, num_updates_per_batch=8, discounting=0.95, learning_rate=3e-4, entropy_cost=1e-3, num_envs=1, batch_size=256, max_devices_per_host=8, seed=1),
   'humanoidstandup': functools.partial(ppo.train, nnum_timesteps=1, num_evals=20, reward_scaling=0.1, episode_length=1000, normalize_observations=True, action_repeat=1, unroll_length=15, num_minibatches=32, num_updates_per_batch=8, discounting=0.97, learning_rate=6e-4, entropy_cost=1e-2, num_envs=2048, batch_size=1024, seed=1),
@@ -50,6 +50,6 @@ for _ in range(1000):
 
 render_every = 2
 
-media.write_video(f'./brax_utils/videos/reacher.mp4',
+media.write_video(f'./brax_utils/videos/{env_name}.mp4',
     eval_env.render(rollout[::render_every]),
     fps=1.0 / eval_env.dt / render_every)

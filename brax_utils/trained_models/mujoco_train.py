@@ -9,8 +9,8 @@ from brax.training.agents.ppo import train as ppo
 from brax.training.agents.sac import train as sac
 from matplotlib import pyplot as plt
 
-env_name = 'reacher'  # @param ['ant', 'halfcheetah', 'hopper', 'humanoid', 'humanoidstandup', 'inverted_pendulum', 'inverted_double_pendulum', 'pusher', 'reacher', 'walker2d']
-backend = 'generalized'  # @param ['generalized', 'positional', 'spring']
+env_name = 'ant'  # @param ['ant', 'halfcheetah', 'hopper', 'humanoid', 'humanoidstandup', 'inverted_pendulum', 'inverted_double_pendulum', 'pusher', 'reacher', 'walker2d']
+backend = 'mjx'  # @param ['generalized', 'positional', 'spring']
 
 env = envs.get_environment(env_name=env_name,
                            backend=backend)
