@@ -38,8 +38,6 @@ class iLQRBrax(BasePolicy):
     ) -> np.ndarray:
         status = 0
 
-        gc_initial_state = self.brax_env.get_generalized_coordinates(initial_state)
-
         # `controls` include control input at timestep N-1, which is a dummy
         # control of zeros.
         if controls is None:
@@ -51,7 +49,7 @@ class iLQRBrax(BasePolicy):
 
         # Rolls out the nominal trajectory and gets the initial cost.
         gc_states, controls, fx, fu = self.rollout_nominal(
-            gc_initial_state, controls
+            initial_state, controls
         )
         J = self.cost.get_traj_cost(gc_states, controls)
 
@@ -69,7 +67,7 @@ class iLQRBrax(BasePolicy):
             updated = False
             for alpha in self.alphas:
                 X_new, U_new, fx, fu, J_new = self.forward_pass(
-                    gc_initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha
+                    initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha
                 )
 
                 if J_new <= J:  # Improved!
@@ -129,58 +127,53 @@ class iLQRBrax(BasePolicy):
 
         @jax.jit
         def _rollout_step(i, args):
-            X, U, fx, fu = args
+            X, U, fx, fu, state_prev = args
             u_fb = jnp.einsum(
                 "ik,k->i", K_closed_loop[:, :,
                                          i], (X[:, i] - nominal_gc_states[:, i])
             )
             u = nominal_controls[:, i] + alpha * k_open_loop[:, i] + u_fb
             u_clip = jnp.clip(u, min=self.brax_env.action_limits[0], max=self.brax_env.action_limits[1])
-            gc_state_nxt = self.brax_env.step_generalized_coordinates(X[0:self.brax_env.dim_q_states, i], 
-                                    X[self.brax_env.dim_q_states:self.brax_env.dim_q_states+self.brax_env.dim_qd_states, i], u_clip)
-            state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(X[0:self.brax_env.dim_q_states, i], 
-                                    X[self.brax_env.dim_q_states:self.brax_env.dim_q_states+self.brax_env.dim_qd_states, i], u_clip)
-            X = X.at[:, i + 1].set(gc_state_nxt)
+            state_nxt = self.brax_env.step(state_prev, u_clip)
+            state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(state_prev, u)
+            X = X.at[:, i + 1].set(self.brax_env.get_generalized_coordinates(state_nxt))
             U = U.at[:, i].set(u_clip)
             fx = fx.at[:, :, i].set(state_grad)
             fu = fu.at[:, :, i].set(action_grad)
-            return X, U, fx, fu
+            return X, U, fx, fu, state_nxt
 
         X = jnp.zeros((self.dim_x, self.N))
         fx = jnp.zeros((self.dim_x, self.dim_x, self.N))
         fu = jnp.zeros((self.dim_x, self.dim_u, self.N))
         U = jnp.zeros((self.dim_u, self.N))  # Assumes the last ctrl are zeros.
-        X = X.at[:, 0].set(initial_state)
+        X = X.at[:, 0].set(nominal_gc_states[:, 0])
 
-        X, U, fx, fu = jax.lax.fori_loop(0, self.N, _rollout_step, (X, U, fx, fu))
+        X, U, fx, fu, _ = jax.lax.fori_loop(0, self.N, _rollout_step, (X, U, fx, fu, initial_state))
         return X, U, fx, fu
 
     @partial(jax.jit, static_argnames='self')
     def rollout_nominal(
-        self, state, controls: DeviceArray
+        self, state, controls: DeviceArray,
     ) -> Tuple[DeviceArray, DeviceArray]:
 
         @jax.jit
         def _rollout_nominal_step(i, args):
-            X, U, fx, fu = args
+            X, U, fx, fu, state_prev = args
             u_clip = jnp.clip(U[:, i], min=self.brax_env.action_limits[0], max=self.brax_env.action_limits[1])
-            gc_state_nxt = self.brax_env.step_generalized_coordinates(X[0:self.brax_env.dim_q_states, i], 
-                                    X[self.brax_env.dim_q_states:self.brax_env.dim_q_states+self.brax_env.dim_qd_states, i], u_clip)
-            state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(X[0:self.brax_env.dim_q_states, i], 
-                                    X[self.brax_env.dim_q_states:self.brax_env.dim_q_states+self.brax_env.dim_qd_states, i], u_clip)
-            X = X.at[:, i + 1].set(gc_state_nxt)
+            state_nxt = self.brax_env.step(state_prev, u_clip)
+            state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(state_prev, U[:, i])
+            X = X.at[:, i + 1].set(self.brax_env.get_generalized_coordinates(state_nxt))
             U = U.at[:, i].set(u_clip)
             fx = fx.at[:, :, i].set(state_grad)
             fu = fu.at[:, :, i].set(action_grad)
-            return X, U, fx, fu
+            return X, U, fx, fu, state_nxt
 
         X = jnp.zeros((self.dim_x, self.N))
         fx = jnp.zeros((self.dim_x, self.dim_x, self.N))
         fu = jnp.zeros((self.dim_x, self.dim_u, self.N))
-        X = X.at[:, 0].set(state)
-
-        X, U, fx, fu = jax.lax.fori_loop(
-            0, self.N - 1, _rollout_nominal_step, (X, controls, fx, fu)
+        X = X.at[:, 0].set(self.brax_env.get_generalized_coordinates(state))
+        X, U, fx, fu, _ = jax.lax.fori_loop(
+            0, self.N - 1, _rollout_nominal_step, (X, controls, fx, fu, state)
         )
         return X, U, fx, fu
 

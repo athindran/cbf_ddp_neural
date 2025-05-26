@@ -50,7 +50,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
             self.id, self.config, brax_envs[3], self.cost)
 
     def get_action(
-        self, obs, state, 
+        self, obs: np.ndarray, state:np.ndarray, 
         task_ctrl: np.ndarray = np.array([0.0, 0.0]),
         prev_sol: Optional[Dict] = None, 
         prev_ctrl: np.ndarray = np.array([0.0, 0.0]), 
@@ -126,14 +126,14 @@ class iLQRBraxSafetyFilter(BasePolicy):
 
         # Exit loop once CBF constraint satisfied or maximum iterations
         # violated
-        control_bias_term = jnp.zeros((self.dim_u,))
+        control_bias_term = np.zeros((self.dim_u,))
         while((constraint_violation < cbf_tol or warmup) and num_iters < 3):
             num_iters = num_iters + 1
 
             # Extract information from solver for enforcing constraint
             grad_x = solver_info_1['grad_x']
             _, B0u = self.brax_env.get_generalized_coordinates_grad(
-                state.pipeline_state.qpos, state.pipeline_state.qvel, control_cbf_cand_jnp)
+                state, control_cbf_cand_jnp)
 
             if self.constraint_type == 'quadratic':
                 grad_xx = solver_info_1['grad_xx']

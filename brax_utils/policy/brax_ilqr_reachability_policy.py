@@ -16,18 +16,16 @@ class iLQRBraxReachability(iLQRBrax):
   ) -> np.ndarray:
     status = 0
     self.tol = 1e-2
-    self.min_alpha = 1e-5
+    self.min_alpha = 1e-12
     # `controls` include control input at timestep N-1, which is a dummy
     # control of zeros.
     if controls is None:
         controls_np = np.random.rand(self.dim_u, self.N)
         controls = jnp.array(controls_np)
 
-    gc_initial_state = self.brax_env.get_generalized_coordinates(initial_state)
-
     # Rolls out the nominal trajectory and gets the initial cost.
     gc_states, controls, fx, fu = self.rollout_nominal(
-        gc_initial_state, controls
+        initial_state, controls
     )
 
     failure_margins = self.cost.constraint.get_mapped_margin(
@@ -38,7 +36,7 @@ class iLQRBraxReachability(iLQRBrax):
     J = (reachable_margin + jnp.sum(ctrl_costs)).astype(float)
 
     converged = False
-    #time0 = time.time()
+    time0 = time.time()
 
     for i in range(self.max_iter):
       # We need cost derivatives from 0 to N-1, but we only need dynamics
@@ -52,11 +50,9 @@ class iLQRBraxReachability(iLQRBrax):
       )
       
       # Choose the best alpha scaling using appropriate line search methods
-      alpha_chosen = self.baseline_line_search(gc_initial_state, gc_states, controls, K_closed_loop, k_open_loop, J)
+      alpha_chosen = self.baseline_line_search(initial_state, gc_states, controls, K_closed_loop, k_open_loop, J)
       
-      gc_states, controls, fx, fu, J_new, critical, failure_margins, reachable_margin = self.forward_pass(gc_initial_state, gc_states, controls,
-                                                                                                               K_closed_loop, k_open_loop, alpha_chosen) 
-      
+      gc_states, controls, fx, fu, J_new, critical, failure_margins, reachable_margin = self.forward_pass(initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha_chosen) 
       if (np.abs((J-J_new) / J) < self.tol):  # Small improvement.
         status = 1
         if J_new>0:
@@ -74,10 +70,12 @@ class iLQRBraxReachability(iLQRBrax):
         status = 1
         break
 
-    #t_process = time.time() - time0
+    t_process = time.time() - time0
     #print(f"Reachability solver took {t_process} seconds with status {status}")
+    gc_states = np.asarray(gc_states)
+    controls = np.asarray(controls)
     solver_info = dict(
-        gc_states=gc_states, controls=controls, reinit_controls=controls, t_process=0.0, status=status, Vopt=J, marginopt=reachable_margin,
+        gc_states=gc_states, controls=controls, reinit_controls=controls, t_process=t_process, status=status, Vopt=J, marginopt=reachable_margin,
         grad_x=V_x, grad_xx=V_xx, B0=fu[:, :, 0], is_inside_target=False,  K_closed_loop=K_closed_loop, k_open_loop=k_open_loop, num_ddp_iters=i + 1,
     )
 
@@ -90,17 +88,17 @@ class iLQRBraxReachability(iLQRBrax):
 
     @jax.jit
     def run_forward_pass(args):
-      alpha, J, J_new = args
+      gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new = args
       alpha = beta*alpha
       _, _, _, _, J_new, _, _, _ = self.forward_pass(initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha)
-      return alpha, J, J_new
+      return gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new
 
     @jax.jit
     def check_terminated(args):
-      alpha, J, J_new = args
+      _, _, _, _, alpha, J, J_new = args
       return jnp.logical_and( alpha>self.min_alpha, J_new<J )
     
-    alpha, J, J_new = jax.lax.while_loop(check_terminated, run_forward_pass, (alpha, J, J_new))
+    gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new = jax.lax.while_loop(check_terminated, run_forward_pass, (gc_states, controls, K_closed_loop, k_open_loop, alpha, J, J_new))
 
     return alpha
 
@@ -138,9 +136,8 @@ class iLQRBraxReachability(iLQRBrax):
     )  # backward until timestep 1
     return critical, reachable_margin
 
-  @partial(jax.jit, static_argnames='self')
   def forward_pass(
-      self, initial_state: DeviceArray, nominal_gc_states: DeviceArray, nominal_controls: DeviceArray,
+      self, initial_state, nominal_gc_states: DeviceArray, nominal_controls: DeviceArray,
       K_closed_loop: DeviceArray, k_open_loop: DeviceArray, alpha: float
   ) -> Tuple[DeviceArray, DeviceArray, float, DeviceArray, DeviceArray,
              DeviceArray]:
