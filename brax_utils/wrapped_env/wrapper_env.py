@@ -38,24 +38,19 @@ class WrappedBraxEnv(ABC):
     
     @partial(jax.jit, static_argnames='self')
     def get_generalized_coordinates(self, state) -> jax.Array:
-        return jnp.concatenate([state.pipeline_state.qpos[0:self.dim_q_states], state.pipeline_state.qvel[0:self.dim_qd_states]], axis=-1) 
+        return jnp.concatenate([state.pipeline_state.q[0:self.dim_q_states], state.pipeline_state.qd[0:self.dim_qd_states]], axis=-1) 
 
     @partial(jax.jit, static_argnames=['self'])
-    def step_generalized_coordinates(self, state, qpos, qvel, action):
-        pipeline_state_qqd = state.pipeline_state.replace(qpos=qpos, qvel=qvel)
-        state_qqd = state.replace(pipeline_state=pipeline_state_qqd)
-        new_state = self.env.step(state_qqd, action)
+    def step_generalized_coordinates(self, state, action):
+        new_state = self.env.step(state, action)
         new_generalized_coordinates = self.get_generalized_coordinates(new_state)
         return new_generalized_coordinates
     
     @partial(jax.jit, static_argnames=['self'])
     def get_generalized_coordinates_grad(self, state, action):
-        qpos = jnp.array(state.pipeline_state.qpos)
-        qvel = jnp.array(state.pipeline_state.qvel)
-        q_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=1)(state, qpos, qvel,  action)
-        qd_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=2)(state, qpos, qvel, action)
-        action_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=3)(state, qpos, qvel, action)
-        return jnp.concatenate([q_grad[..., 0:self.dim_q_states], qd_grad[..., 0:self.dim_qd_states]], axis=-1), action_grad
+        state_grad = jax.jacobian(self.step_generalized_coordinates, argnums=0)(state, action).pipeline_state
+        action_grad = jax.jacobian(self.step_generalized_coordinates, argnums=1)(state, action)
+        return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states]], axis=-1), action_grad
 
     @partial(jax.jit, static_argnames=['self'])
     def get_obs_grad(self, pipeline_state):
