@@ -206,15 +206,11 @@ class iLQRSafetyFilter(BasePolicy):
                     # Controls improvement direction
                     # limits = np.array( [[self.dyn.ctrl_space[0, 0] - control_cbf_cand[0], self.dyn.ctrl_space[0, 1] - control_cbf_cand[0]],
                     #          [self.dyn.ctrl_space[1, 0] - control_cbf_cand[1], self.dyn.ctrl_space[1, 1] - control_cbf_cand[1]]] )
-                    if self.dim_u==2:
-                        control_correction = barrier_filter_quadratic_two(
-                            P, p, scaled_c, initialize=solver_initial, control_bias_term=control_bias_term)
-                    elif self.dim_u==8:
-                        control_correction = barrier_filter_quadratic_eight(
-                            P, p, scaled_c, initialize=solver_initial, control_bias_term=control_bias_term)    
+                    control_correction = barrier_filter_quadratic_two(
+                        P, p, scaled_c, initialize=solver_initial, control_bias_term=control_bias_term)  
                 elif self.constraint_type == 'linear':
                     control_correction = barrier_filter_linear(
-                        grad_x, B0, scaled_c)
+                        grad_x, B0[:, :, 0], scaled_c)
 
                 control_bias_term = control_bias_term + control_correction
                 control_cbf_cand = control_cbf_cand + \
