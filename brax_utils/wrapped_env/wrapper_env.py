@@ -20,12 +20,14 @@ class WrappedBraxEnv(ABC):
             self.dim_u = 2
             self.dim_q_states = 2
             self.dim_qd_states = 2
+            self.dim_qdd_states = 0
             self.action_limits = np.array([[-1., -1.], [1., 1.]])
         elif env_name=='ant':
             self.dim_x = 29
             self.dim_u = 8
             self.dim_q_states = 15
             self.dim_qd_states = 14
+            self.dim_qdd_states = 0
             self.action_limits = np.array([[-1., -1., -1., -1., -1., -1., -1., -1.], [1., 1., 1., 1., 1., 1., 1., 1.]])
         else:
             # Raise not implemented error.
@@ -38,7 +40,7 @@ class WrappedBraxEnv(ABC):
     
     @partial(jax.jit, static_argnames='self')
     def get_generalized_coordinates(self, state) -> jax.Array:
-        return jnp.concatenate([state.pipeline_state.q[0:self.dim_q_states], state.pipeline_state.qd[0:self.dim_qd_states]], axis=-1) 
+        return jnp.concatenate([state.pipeline_state.q[0:self.dim_q_states], state.pipeline_state.qd[0:self.dim_qd_states], state.pipeline_state.qdd[0:self.dim_qdd_states]], axis=-1) 
 
     @partial(jax.jit, static_argnames=['self'])
     def step_generalized_coordinates(self, state, action):
@@ -50,12 +52,12 @@ class WrappedBraxEnv(ABC):
     def get_generalized_coordinates_grad(self, state, action):
         state_grad = jax.jacobian(self.step_generalized_coordinates, argnums=0)(state, action).pipeline_state
         action_grad = jax.jacobian(self.step_generalized_coordinates, argnums=1)(state, action)
-        return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states]], axis=-1), action_grad
+        return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states], state_grad.qdd[..., 0:self.dim_qdd_states]], axis=-1), action_grad
 
     @partial(jax.jit, static_argnames=['self'])
     def get_obs_grad(self, pipeline_state):
         state_grad = jax.jacobian(self._get_obs, argnums=0)(pipeline_state)
-        return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states]], axis=-1)
+        return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states], state_grad.qdd[..., 0:self.dim_qdd_states]], axis=-1)
 
     @partial(jax.jit, static_argnames='self')    
     def reset(self, rng) -> jax.Array:
