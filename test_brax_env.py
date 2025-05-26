@@ -247,9 +247,9 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
     np.save(os.path.join(save_folder, f'{policy_type}_save_data.npy'), save_dict)
 
 if __name__ == "__main__":
-    for seed in range(5):
-      for policy_type in ["neural", "ilqr_filter_with_neural_policy"]:
+    for seed in range(1):
+      for policy_type in ["ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
-        env_name = 'reacher'
+        env_name = 'ant'
         main(seed, env_name=env_name, policy_type=policy_type)
 
