@@ -72,8 +72,6 @@ class iLQRBraxReachability(iLQRBrax):
 
     t_process = time.time() - time0
     #print(f"Reachability solver took {t_process} seconds with status {status}")
-    gc_states = np.asarray(gc_states)
-    controls = np.asarray(controls)
     solver_info = dict(
         gc_states=gc_states, controls=controls, reinit_controls=controls, t_process=t_process, status=status, Vopt=J, marginopt=reachable_margin,
         grad_x=V_x, grad_xx=V_xx, B0=fu[:, :, 0], is_inside_target=False,  K_closed_loop=K_closed_loop, k_open_loop=k_open_loop, num_ddp_iters=i + 1,

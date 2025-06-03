@@ -22,6 +22,7 @@ class WrappedBraxEnv(ABC):
             self.dim_qd_states = 2
             self.dim_qdd_states = 0
             self.action_limits = np.array([[-1., -1.], [1., 1.]])
+            self.dt = 0.02
         elif env_name=='ant':
             self.dim_x = 29
             self.dim_u = 8
@@ -29,6 +30,7 @@ class WrappedBraxEnv(ABC):
             self.dim_qd_states = 14
             self.dim_qdd_states = 0
             self.action_limits = np.array([[-1., -1., -1., -1., -1., -1., -1., -1.], [1., 1., 1., 1., 1., 1., 1., 1.]])
+            self.dt = 0.05
         else:
             # Raise not implemented error.
             pass
@@ -74,84 +76,130 @@ class WrappedBraxEnv(ABC):
         values = save_dict['values']
         policy_type = save_dict['policy_type']
         is_filter_active = save_dict['filter_active']
+        is_filter_fail = save_dict['filter_failed']
         nsteps = states.shape[0]
-        range_space = np.arange(0, nsteps)
+        range_space = np.arange(0, nsteps) * self.dt
 
         rowdict = {'ant': 4, 'reacher': 2}
         nrows = rowdict[self.env_name]
         ncols = math.ceil(self.dim_q_states/nrows)
-        figsize = {'ant': (22, 16), 'reacher': (9, 4)}
+        figsize = {'ant': (35, 16), 'reacher': (9, 4)}
+        fontsize = {'ant': 14, 'reacher': 10}
+        linewidths = {'ant': 1.5, 'reacher': 2.5}
+        legend_fontsize = fontsize[self.env_name]
+        linewidth = linewidths[self.env_name]
+
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name], sharex=True)
         axes = axes.ravel()
         for idx in range(self.dim_q_states):
-            axes[idx].plot(states[:, idx])
-            axes[idx].set_ylabel(f'q {idx}')
-            axes[idx].set_xlabel('Timesteps')
+            axes[idx].plot(range_space, states[:, idx], linewidth=linewidth)
+            axes[idx].set_ylabel(f'q {idx}', fontsize=legend_fontsize)
+            axes[idx].set_xlabel('Time (s)', fontsize=legend_fontsize)
             min_r = states[:, idx].min()
             max_r = states[:, idx].max()
             axes[idx].fill_between(range_space, 1.2*min_r, 1.2*max_r,
-                                    where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+                                    where=is_filter_active[0:nsteps], color='b', alpha=0.15)
+            axes[idx].yaxis.set_label_coords(-0.04, 0.5)
+            axes[idx].xaxis.set_label_coords(0.5, -0.04)
+            axes[idx].set_xticks(ticks=[0, round(self.dt*nsteps, 2)], labels=[0, round(self.dt*nsteps, 2)], fontsize=legend_fontsize)
+            axes[idx].set_yticks(ticks=[round(states[:, idx].min(), 2), round(states[:, idx].max(), 2)], 
+            labels=[round(states[:, idx].min(), 2), round(states[:, idx].max(), 2)], 
+            fontsize=legend_fontsize)
 
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_q_states.png'))
+
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_q_states.png'), bbox_inches='tight')
         plt.close()
 
         nrows = rowdict[self.env_name]
         ncols = math.ceil(self.dim_qd_states/nrows)
-        figsize = {'ant': (22, 16), 'reacher': (9, 4)}
+        figsize = {'ant': (35, 16), 'reacher': (9, 4)}
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name], sharex=True)
         axes = axes.ravel()
         for idx in range(self.dim_qd_states):
-            axes[idx].plot(states[:, self.dim_q_states + idx])
-            axes[idx].set_ylabel(f'qd {idx}')
-            axes[idx].set_xlabel('Timesteps')
+            axes[idx].plot(range_space, states[:, self.dim_q_states + idx], linewidth=linewidth)
+            axes[idx].set_ylabel(f'qd {idx}', fontsize=legend_fontsize)
+            axes[idx].set_xlabel('Time (s)', fontsize=legend_fontsize)
             min_r = states[:, self.dim_q_states + idx].min()
             max_r = states[:, self.dim_q_states + idx].max()
             axes[idx].fill_between(range_space, 1.2*min_r, 1.2*max_r,
-                                    where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+                                    where=is_filter_active[0:nsteps], color='b', alpha=0.15)
+            axes[idx].yaxis.set_label_coords(-0.04, 0.5)
+            axes[idx].xaxis.set_label_coords(0.5, -0.04)
+            axes[idx].set_xticks(ticks=[0, round(self.dt*nsteps, 2)], labels=[0, round(self.dt*nsteps, 2)], fontsize=legend_fontsize)
+            axes[idx].set_yticks(ticks=[round(states[:, self.dim_q_states + idx].min(), 2), round(states[:, self.dim_q_states + idx].max(), 2)], 
+                        labels=[round(states[:, self.dim_q_states + idx].min(), 2), round(states[:, self.dim_q_states + idx].max(), 2)], 
+                        fontsize=legend_fontsize)
 
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_qd_states.png'))
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_qd_states.png'), bbox_inches='tight')
         plt.close()
 
         rowdict = {'ant': 2, 'reacher': 1}
-        figsize = {'ant': (18, 9), 'reacher': (9, 4)}
+        figsize = {'ant': (35, 9), 'reacher': (9, 4)}
         nrows = rowdict[self.env_name]
         ncols = math.ceil(self.dim_u/nrows)
 
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name])
         axes = axes.ravel()
         for idx in range(self.dim_u):
-            axes[idx].plot(ctrls[:, idx])
-            axes[idx].set_ylabel(f'Action {idx}')
-            axes[idx].set_xlabel('Timesteps')
+            axes[idx].plot(range_space, ctrls[:, idx], linewidth=linewidth)
             axes[idx].set_ylim([-1.0, 1.0])
             axes[idx].fill_between(range_space, -1.0, 1.0,
-                                    where=is_filter_active[0:nsteps], color='b', alpha=0.35)
+                                    where=is_filter_active[0:nsteps], color='b', alpha=0.15)
+            axes[idx].fill_between(range_space, -1.0, 1.0,
+                            where=is_filter_fail[0:nsteps], color='r', alpha=0.15)
+            axes[idx].yaxis.set_label_coords(-0.04, 0.5)
+            axes[idx].xaxis.set_label_coords(0.5, -0.04)
+            axes[idx].set_xticks(ticks=[0, round(self.dt*nsteps, 2)], labels=[0, round(self.dt*nsteps, 2)], fontsize=legend_fontsize)
+            axes[idx].set_yticks(ticks=[-1.0, 1.0], 
+                        labels=[-1.0, 1.0], 
+                        fontsize=legend_fontsize)
+            axes[idx].set_xlabel('Time (s)', 
+                        fontsize=legend_fontsize)
+            axes[idx].set_ylabel('Control ' + str(idx), 
+                        fontsize=legend_fontsize)
 
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'))
+
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'), bbox_inches='tight')
         plt.close()
 
-        fig = plt.figure(figsize=(5.5, 3.5))
+        fig = plt.figure(figsize=(7.5, 3.5))
         ax = plt.gca()
-        ax.plot(control_cycle_times)
-        ax.set_ylabel('Cycle time(s)')
-        ax.set_xlabel('Timesteps')
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'))
+        ax.plot(range_space, control_cycle_times, linewidth=linewidth)
+        ax.yaxis.set_label_coords(-0.04, 0.5)
+        ax.xaxis.set_label_coords(0.5, -0.04)
+        ax.set_xticks(ticks=[0, round(self.dt*nsteps, 2)], labels=[0, round(self.dt*nsteps, 2)], fontsize=legend_fontsize)
+        ax.set_yticks(ticks=[round(control_cycle_times.min(), 4), round(control_cycle_times.max(), 4)], 
+                        labels=[round(control_cycle_times.min(), 4), round(control_cycle_times.max(), 4)], 
+                        fontsize=legend_fontsize)
+        ax.set_ylim([round(control_cycle_times.min(), 4), round(control_cycle_times.max(), 4)])
+        ax.set_xlabel('Time (s)', 
+                        fontsize=legend_fontsize)
+        ax.set_ylabel('Control cycle time (s)', 
+                        fontsize=legend_fontsize)
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'), bbox_inches='tight')
         plt.close()
 
-        fig = plt.figure(figsize=(5.5, 3.5))
+        fig = plt.figure(figsize=(9.5, 3.5))
         ax = plt.gca()
-        ax.plot(values)
-        ax.set_ylabel('Reachability value')
-        ax.set_xlabel('Timesteps')
-        ax.fill_between(range_space, values.min(), values.max()*2.0, 
-                            where=is_filter_active[0:nsteps], color='b', alpha=0.35)
-        ax.set_ylim([values.min(), values.max()*2.0])
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=14)
+        ax.plot(range_space, values, linewidth=linewidth)
+        ax.plot(range_space, np.zeros_like(range_space), 'k--')
+        ax.fill_between(range_space, min(values.min(), 0.0), values.max()*2.0, 
+                            where=is_filter_active[0:nsteps], color='b', alpha=0.15)
+        ax.set_ylim([min(round(values.min(), 2), 0.0), round(values.max()*1.2, 2)])
+        ax.yaxis.set_label_coords(-0.04, 0.5)
+        ax.xaxis.set_label_coords(0.5, -0.04)
+        ax.set_xticks(ticks=[0, round(self.dt*nsteps, 2)], labels=[0, round(self.dt*nsteps, 2)], fontsize=legend_fontsize)
+        ax.set_yticks(ticks=[min(round(values.min(), 2), 0.0), round(values.max()*1.2, 2)], 
+                        labels=[min(round(values.min(), 2), 0.0), round(values.max()*1.2, 2)], 
+                        fontsize=legend_fontsize)
+        ax.set_xlabel('Time (s)', 
+                        fontsize=legend_fontsize)
+        ax.set_ylabel('Value function', 
+                        fontsize=legend_fontsize)
+        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
         fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'), bbox_inches='tight')
         plt.close()
-
-

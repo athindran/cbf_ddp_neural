@@ -35,7 +35,7 @@ def get_neural_policy(env_name, backend):
     jit_inference_fn = jax.jit(inference_fn)
     return jit_inference_fn
 
-def warmup_safety_filter_with_task_policy_rollout(rng, state, brax_env, task_policy, safety_filter):
+def warmup_jit_with_task_policy_rollout(rng, state, brax_env, task_policy, safety_filter):
     """
     Warmup safety filter by running a few time along the task policy rollout. 
     This is a substitute for the rejection sampling that was used in the bicycle dynamics.
@@ -47,7 +47,7 @@ def warmup_safety_filter_with_task_policy_rollout(rng, state, brax_env, task_pol
     # Substitute for rejection sampling
     for _ in range(10):
       task_ctrl, _ = task_policy(state.obs, act_rng)
-      safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )))
+      safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )), warmup=True)
       state = brax_env.step(state, task_ctrl)
 
 
@@ -132,7 +132,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       safety_filter =  iLQRBraxSafetyFilter(id=env_name, brax_envs=brax_envs, cost=reachability_cost, config=config_solver)
 
       # Warmup
-      warmup_safety_filter_with_task_policy_rollout(rng, state, brax_env, task_policy, safety_filter)
+      warmup_jit_with_task_policy_rollout(rng, state, brax_env, task_policy, safety_filter)
       act_rng, rng = jax.random.split(rng)
       task_ctrl, _ = task_policy(state.obs, act_rng)
       safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )), warmup=True)
@@ -168,6 +168,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
     gc_states_sys = np.zeros((T, brax_env.dim_x))
     values_sys = np.zeros((T,))
     filter_active = np.full_like(values_sys, False)
+    filter_failed = np.full_like(values_sys, False)
     control_cycle_times = np.zeros((T, ))
     for idx in range(T):
       print(f"Starting time {idx}")
@@ -196,12 +197,13 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
         time0 = time.time()
         task_ctrl, _ = task_policy(state.obs, act_rng)
         act, solver_dict = safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_sol=prev_sol, prev_ctrl=prev_ctrl)
+        control_cycle_times[idx] = time.time() - time0
         prev_sol = copy.deepcopy(solver_dict)
         controls_init = jnp.asarray(solver_dict['reinit_controls'])
         # act_rng, rng = jax.random.split(rng)
-        control_cycle_times[idx] = time.time() - time0
         values_sys[idx] = solver_dict['marginopt']
         filter_active[idx] = solver_dict['mark_barrier_filter']
+        filter_failed[idx] = solver_dict['mark_complete_filter']
       elif policy_type=="ilqr_filter_with_ilqr_policy":
         time0 = time.time()
         task_ctrl, solver_dict_task = task_policy.get_action(state, controls=controls_init_task)
@@ -213,6 +215,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
         controls_init = jnp.asarray(solver_dict['reinit_controls'])
         values_sys[idx] = solver_dict['marginopt']  
         filter_active[idx] = solver_dict['mark_barrier_filter']
+        filter_failed[idx] = solver_dict['mark_complete_filter']
         #print(f"value: {solver_dict['marginopt']}")
         #print(f"Gc coord: {brax_env.get_generalized_coordinates(state)}")
 
@@ -242,14 +245,14 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
         fps=1.0 / brax_env.env.dt / render_every)
     save_dict = {'policy_type': policy_type,  'gc_states': gc_states_sys, 
                   'actions': actions_to_sys, 'process_times': control_cycle_times,
-                  'values': values_sys, 'filter_active': filter_active}
+                  'values': values_sys, 'filter_active': filter_active, 'filter_failed': filter_failed}
     brax_env.plot_states_and_controls(save_dict, save_folder)
     np.save(os.path.join(save_folder, f'{policy_type}_save_data.npy'), save_dict)
 
 if __name__ == "__main__":
-    for seed in range(1):
-      for policy_type in ["ilqr_filter_with_neural_policy"]:
+    for seed in range(5):
+      for policy_type in ["neural", "ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
-        env_name = 'ant'
+        env_name = 'reacher'
         main(seed, env_name=env_name, policy_type=policy_type)
 
