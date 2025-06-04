@@ -56,10 +56,19 @@ class iLQRReachability(iLQR):
           states, controls
       )
       fx, fu = self.dyn.get_jacobian(states[:, :-1], controls[:, :-1])
-      V_x, V_xx, k_open_loop, K_closed_loop, _, _ = self.backward_pass(
-          c_x=c_x, c_u=c_u, c_xx=c_xx, c_uu=c_uu, c_ux=c_ux, fx=fx, fu=fu,
-          critical=critical, failure_margins=failure_margins
-      )
+
+      if self.order == 'DDP':
+          fxx, fuu, fux = self.dyn.get_hessian(states[:, :-1], controls[:, :-1])
+          V_x, V_xx, k_open_loop, K_closed_loop, _, _ = self.backward_pass_ddp(
+              c_x=c_x, c_u=c_u, c_xx=c_xx, c_uu=c_uu, c_ux=c_ux, fx=fx, fu=fu,
+              fxx=fxx, fuu=fuu, fux=fux,
+              critical=critical, failure_margins=failure_margins
+          )
+      else:
+          V_x, V_xx, k_open_loop, K_closed_loop, _, _ = self.backward_pass(
+              c_x=c_x, c_u=c_u, c_xx=c_xx, c_uu=c_uu, c_ux=c_ux, fx=fx, fu=fu,
+              critical=critical, failure_margins=failure_margins
+          )
       
       alpha_chosen = 1.0
       # Choose the best alpha scaling using appropriate line search methods
@@ -216,6 +225,102 @@ class iLQRReachability(iLQR):
       Q_ux = c_ux[:, :, idx] + fu[:, :, idx].T @ V_xx @ fx[:, :, idx]
       Q_u = c_u[:, idx] + fu[:, :, idx].T @ V_x
       Q_uu = c_uu[:, :, idx] + fu[:, :, idx].T @ V_xx @ fu[:, :, idx]
+
+      Q_uu_inv = jnp.linalg.inv(Q_uu + reg_mat)
+      Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
+      ks = ks.at[:, idx].set(-Q_uu_inv @ Q_u)
+
+      V_x = Q_x + Q_ux.T @ ks[:, idx]
+      V_xx = Q_xx + Q_ux.T @ Ks[:, :, idx]
+
+      return V_x, V_xx, ks, Ks, V_x_critical, V_xx_critical
+
+    @jax.jit
+    def backward_pass_looper(i, _carry):
+      V_x, V_xx, ks, Ks, critical, V_x_critical, V_xx_critical = _carry
+      idx = self.N - 2 - i
+
+      V_x, V_xx, ks, Ks, V_x_critical, V_xx_critical = jax.lax.cond(
+          critical[idx], true_func, false_func, (idx, V_x, V_xx, ks, Ks, V_x_critical, V_xx_critical)
+      )
+
+      return V_x, V_xx, ks, Ks, critical, V_x_critical, V_xx_critical
+
+    # Initializes.
+    Ks = jnp.zeros((self.dim_u, self.dim_x, self.N - 1))
+    ks = jnp.zeros((self.dim_u, self.N - 1))
+    
+    V_x_critical = jnp.zeros((self.dim_x, ))
+    V_xx_critical = jnp.zeros((self.dim_x, self.dim_x, ))
+
+    V_x = c_x[:, -1]
+    V_xx = c_xx[:, :, -1]
+    
+    reg_mat = self.eps * jnp.eye(self.dim_u)
+
+    V_x, V_xx, ks, Ks, critical, V_x_critical, V_xx_critical = jax.lax.fori_loop(
+        0, self.N - 1, backward_pass_looper, (V_x, V_xx, ks, Ks, critical, V_x_critical, V_xx_critical)
+    )
+    return V_x, V_xx, ks, Ks, V_x_critical, V_xx_critical
+
+
+  @partial(jax.jit, static_argnames='self')
+  def backward_pass_ddp(
+      self, c_x: DeviceArray, c_u: DeviceArray, c_xx: DeviceArray,
+      c_uu: DeviceArray, c_ux: DeviceArray, fx: DeviceArray, fu: DeviceArray,
+      fxx: DeviceArray, fuu: DeviceArray, fux: DeviceArray,
+      critical: DeviceArray, failure_margins:DeviceArray
+  ) -> Tuple[DeviceArray, DeviceArray, DeviceArray, DeviceArray, DeviceArray,DeviceArray, DeviceArray]:
+    """
+    Jitted backward pass looped computation.
+
+    Args:
+        c_x (DeviceArray): (dim_x, N)
+        c_u (DeviceArray): (dim_u, N)
+        c_xx (DeviceArray): (dim_x, dim_x, N)
+        c_uu (DeviceArray): (dim_u, dim_u, N)
+        c_ux (DeviceArray): (dim_u, dim_x, N)
+        fx (DeviceArray): (dim_x, dim_x, N-1)
+        fu (DeviceArray): (dim_x, dim_u, N-1)
+
+    Returns:
+        Ks (DeviceArray): gain matrices (dim_u, dim_x, N - 1)
+        ks (DeviceArray): gain vectors (dim_u, N - 1)
+    """
+
+    @jax.jit
+    def true_func(args):
+      idx, V_x, V_xx, ks, Ks, _, _ = args
+
+      #! Q_x, Q_xx are not used if this time step is critical.
+      # Q_x = c_x[:, idx] + fx[:, :, idx].T @ V_x
+      # Q_xx = c_xx[:, :, idx] + fx[:, :, idx].T @ V_xx @ fx[:, :, idx]
+      Q_ux_append = jnp.einsum('i, ijk->jk', V_x, fux[:, :, :, idx])
+      Q_ux = c_ux[:, :, idx] + fu[:, :, idx].T @ V_xx @ fx[:, :, idx] + Q_ux_append
+      Q_u = c_u[:, idx] + fu[:, :, idx].T @ V_x
+      Q_uu_append = jnp.einsum('i, ijk->jk', V_x, fuu[:, :, :, idx])
+      Q_uu = c_uu[:, :, idx] + fu[:, :, idx].T @ V_xx @ fu[:, :, idx] + Q_uu_append
+
+      Q_uu_inv = jnp.linalg.inv(Q_uu + reg_mat)
+      Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
+      ks = ks.at[:, idx].set(-Q_uu_inv @ Q_u)
+ 
+      return c_x[:, idx], c_xx[:, :, idx], ks, Ks, c_x[:, idx], c_xx[:, :, idx]
+
+    @jax.jit
+    def false_func(args):
+      idx, V_x, V_xx, ks, Ks, V_x_critical, V_xx_critical = args
+
+      Q_x = fx[:, :, idx].T @ V_x
+      Q_xx_append = jnp.einsum('i, ijk->jk', V_x, fxx[:, :, :, idx])
+      Q_xx = fx[:, :, idx].T @ V_xx @ fx[:, :, idx] + Q_xx_append
+
+      Q_ux_append = jnp.einsum('i, ijk->jk', V_x, fux[:, :, :, idx])
+      Q_ux = c_ux[:, :, idx] + fu[:, :, idx].T @ V_xx @ fx[:, :, idx] + Q_ux_append
+
+      Q_u = c_u[:, idx] + fu[:, :, idx].T @ V_x
+      Q_uu_append = jnp.einsum('i, ijk->jk', V_x, fuu[:, :, :, idx])
+      Q_uu = c_uu[:, :, idx] + fu[:, :, idx].T @ V_xx @ fu[:, :, idx] + Q_uu_append
 
       Q_uu_inv = jnp.linalg.inv(Q_uu + reg_mat)
       Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)

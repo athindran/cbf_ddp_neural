@@ -82,9 +82,10 @@ solver:
   FILTER_TYPE: 'CBF'
   CONSTRAINT_TYPE: 'quadratic'
   CBF_GAMMA: 0.97
-  SOFT_CBF_GAMMA: 0.97
+  SOFT_CBF_GAMMA: 0.98
   LR_THRESHOLD: 0.0
   OUT_FOLDER: exps/ilqr/bic4D/reachability_experiment_mulobs_config2/
   DEVICE: cpu
+  ORDER: 'DDP'
   FIG_SIZE_X: 8
   FIG_SIZE_Y: 2.0

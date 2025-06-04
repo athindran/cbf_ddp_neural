@@ -26,6 +26,7 @@ class iLQR(BasePolicy):
         self.dim_x = dyn.dim_x
         self.dim_u = dyn.dim_u
         self.N = config.N
+        self.order = config.ORDER
         self.max_iter = config.MAX_ITER
         self.tol = 1e-5  # ILQR update tolerance.
         self.eps = getattr(config, "EPS", 1e-6)
