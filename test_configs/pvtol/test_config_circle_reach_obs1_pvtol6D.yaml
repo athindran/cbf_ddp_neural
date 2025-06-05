@@ -70,6 +70,6 @@ solver:
   OUT_FOLDER: exps/ilqr/pvtol6D/reachability_experiment_mulobs_config1/
   DEVICE: cpu
   # options: 'ILQR', 'DDP'.
-  ORDER: 'DDP'
+  ORDER: 'ILQR'
   FIG_SIZE_X: 5.0
   FIG_SIZE_Y: 5.0
