@@ -73,6 +73,15 @@ class WrappedBraxEnv(ABC):
         return f_xx, f_ux, hess_uu
 
     @partial(jax.jit, static_argnames=['self'])
+    def get_batched_generalized_coordinates_grad(self, nominal_states, nominal_actions):
+        jac = jax.jit(
+            jax.vmap(
+                self.get_generalized_coordinates_grad, in_axes=(
+                    -1, -1), out_axes=(
+                    2, 2)))
+        return jac(nominal_states, nominal_actions)
+
+    @partial(jax.jit, static_argnames=['self'])
     def get_obs_grad(self, pipeline_state):
         state_grad = jax.jacobian(self._get_obs, argnums=0)(pipeline_state)
         return jnp.concatenate([state_grad.q[..., 0:self.dim_q_states], state_grad.qd[..., 0:self.dim_qd_states], state_grad.qdd[..., 0:self.dim_qdd_states]], axis=-1)

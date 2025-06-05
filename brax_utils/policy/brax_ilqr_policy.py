@@ -48,7 +48,7 @@ class iLQRBrax(BasePolicy):
             controls = jnp.array(controls)
 
         # Rolls out the nominal trajectory and gets the initial cost.
-        gc_states, controls, fx, fu = self.rollout_nominal(
+        gc_states, controls, pipeline_states = self.rollout_nominal(
             initial_state, controls
         )
         J = self.cost.get_traj_cost(gc_states, controls)
@@ -61,12 +61,14 @@ class iLQRBrax(BasePolicy):
             # jacobian from 0 to N-2.
             c_x, c_u, c_xx, c_uu, c_ux = self.cost.get_derivatives(
                 gc_states, controls)
+            fx, fu = self.brax_env.get_batched_generalized_coordinates_grad(pipeline_states, controls)
+
             K_closed_loop, k_open_loop = self.backward_pass(
                 c_x=c_x, c_u=c_u, c_xx=c_xx, c_uu=c_uu, c_ux=c_ux, fx=fx, fu=fu
             )
             updated = False
             for alpha in self.alphas:
-                X_new, U_new, fx, fu, J_new = self.forward_pass(
+                X_new, U_new, pipeline_states_new, J_new = self.forward_pass(
                     initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha
                 )
 
@@ -79,6 +81,7 @@ class iLQRBrax(BasePolicy):
                     J = J_new
                     gc_states = X_new
                     controls = U_new
+                    pipeline_states = pipeline_states_new
                     updated = True
                     break
 
@@ -113,11 +116,11 @@ class iLQRBrax(BasePolicy):
         # We seperate the rollout and cost explicitly since get_cost might rely on
         # other information, such as env parameters (track), and is difficult for
         # jax to differentiate.
-        X, U, fx, fu = self.rollout(
+        X, U, pipeline_states = self.rollout(
             initial_state, nominal_gc_states, nominal_controls, K_closed_loop, k_open_loop, alpha
         )
         J = self.cost.get_traj_cost(X, U)
-        return X, U, fx, fu, J
+        return X, U, pipeline_states, J
 
     @partial(jax.jit, static_argnames='self')
     def rollout(
@@ -127,7 +130,7 @@ class iLQRBrax(BasePolicy):
 
         @jax.jit
         def _rollout_step(i, args):
-            X, U, fx, fu, state_prev = args
+            X, U, state_prev, pipeline_states = args
             u_fb = jnp.einsum(
                 "ik,k->i", K_closed_loop[:, :,
                                          i], (X[:, i] - nominal_gc_states[:, i])
@@ -138,18 +141,20 @@ class iLQRBrax(BasePolicy):
             state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(state_prev, u)
             X = X.at[:, i + 1].set(self.brax_env.get_generalized_coordinates(state_nxt))
             U = U.at[:, i].set(u_clip)
-            fx = fx.at[:, :, i].set(state_grad)
-            fu = fu.at[:, :, i].set(action_grad)
-            return X, U, fx, fu, state_nxt
+            pipeline_states = jax.tree.map(lambda xs, ys: xs.at[..., i + 1].set(ys), pipeline_states, state_nxt)
+
+            return X, U, state_nxt, pipeline_states
 
         X = jnp.zeros((self.dim_x, self.N))
         fx = jnp.zeros((self.dim_x, self.dim_x, self.N))
         fu = jnp.zeros((self.dim_x, self.dim_u, self.N))
         U = jnp.zeros((self.dim_u, self.N))  # Assumes the last ctrl are zeros.
         X = X.at[:, 0].set(nominal_gc_states[:, 0])
+        state_expanded = jax.tree.map(lambda xs: jnp.expand_dims(xs, axis=-1), initial_state)
+        pipeline_states = jax.tree.map(lambda xs: jnp.repeat(xs, self.N, axis=-1), state_expanded)
 
-        X, U, fx, fu, _ = jax.lax.fori_loop(0, self.N, _rollout_step, (X, U, fx, fu, initial_state))
-        return X, U, fx, fu
+        X, U, _, pipeline_states = jax.lax.fori_loop(0, self.N - 1, _rollout_step, (X, U, initial_state, pipeline_states))
+        return X, U, pipeline_states
 
     @partial(jax.jit, static_argnames='self')
     def rollout_nominal(
@@ -158,24 +163,27 @@ class iLQRBrax(BasePolicy):
 
         @jax.jit
         def _rollout_nominal_step(i, args):
-            X, U, fx, fu, state_prev = args
+            X, U, state_prev, pipeline_states = args
             u_clip = jnp.clip(U[:, i], min=self.brax_env.action_limits[0], max=self.brax_env.action_limits[1])
             state_nxt = self.brax_env.step(state_prev, u_clip)
             state_grad, action_grad = self.brax_env.get_generalized_coordinates_grad(state_prev, U[:, i])
             X = X.at[:, i + 1].set(self.brax_env.get_generalized_coordinates(state_nxt))
             U = U.at[:, i].set(u_clip)
-            fx = fx.at[:, :, i].set(state_grad)
-            fu = fu.at[:, :, i].set(action_grad)
-            return X, U, fx, fu, state_nxt
+            pipeline_states = jax.tree.map(lambda xs, ys: xs.at[..., i + 1].set(ys), pipeline_states, state_nxt)
+
+            return X, U, state_nxt, pipeline_states
 
         X = jnp.zeros((self.dim_x, self.N))
         fx = jnp.zeros((self.dim_x, self.dim_x, self.N))
         fu = jnp.zeros((self.dim_x, self.dim_u, self.N))
         X = X.at[:, 0].set(self.brax_env.get_generalized_coordinates(state))
-        X, U, fx, fu, _ = jax.lax.fori_loop(
-            0, self.N - 1, _rollout_nominal_step, (X, controls, fx, fu, state)
+        state_expanded = jax.tree.map(lambda xs: jnp.expand_dims(xs, axis=-1), state)
+        pipeline_states = jax.tree.map(lambda xs: jnp.repeat(xs, self.N, axis=-1), state_expanded)
+
+        X, U, _, pipeline_states = jax.lax.fori_loop(
+            0, self.N - 1, _rollout_nominal_step, (X, controls, state, pipeline_states)
         )
-        return X, U, fx, fu
+        return X, U, pipeline_states
 
     @partial(jax.jit, static_argnames='self')
     def backward_pass(

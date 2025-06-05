@@ -24,7 +24,7 @@ class iLQRBraxReachability(iLQRBrax):
         controls = jnp.array(controls_np)
 
     # Rolls out the nominal trajectory and gets the initial cost.
-    gc_states, controls, fx, fu = self.rollout_nominal(
+    gc_states, controls, pipeline_states = self.rollout_nominal(
         initial_state, controls
     )
 
@@ -44,6 +44,7 @@ class iLQRBraxReachability(iLQRBrax):
       c_x, c_u, c_xx, c_uu, c_ux = self.cost.get_derivatives(
           gc_states, controls
       )
+      fx, fu = self.brax_env.get_batched_generalized_coordinates_grad(pipeline_states, controls)
       V_x, V_xx, k_open_loop, K_closed_loop, _, _ = self.backward_pass(
           c_x=c_x, c_u=c_u, c_xx=c_xx, c_uu=c_uu, c_ux=c_ux, fx=fx, fu=fu,
           critical=critical, failure_margins=failure_margins
@@ -52,7 +53,7 @@ class iLQRBraxReachability(iLQRBrax):
       # Choose the best alpha scaling using appropriate line search methods
       alpha_chosen = self.baseline_line_search(initial_state, gc_states, controls, K_closed_loop, k_open_loop, J)
       
-      gc_states, controls, fx, fu, J_new, critical, failure_margins, reachable_margin = self.forward_pass(initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha_chosen) 
+      gc_states, controls, pipeline_states, J_new, critical, failure_margins, reachable_margin = self.forward_pass(initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha_chosen) 
       if (np.abs((J-J_new) / J) < self.tol):  # Small improvement.
         status = 1
         if J_new>0:
@@ -88,7 +89,7 @@ class iLQRBraxReachability(iLQRBrax):
     def run_forward_pass(args):
       alpha, J, J_new = args
       alpha = beta*alpha
-      _, _, _, _, J_new, _, _, _ = self.forward_pass(initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha)
+      _, _, _, J_new, _, _, _ = self.forward_pass(initial_state, gc_states, controls, K_closed_loop, k_open_loop, alpha)
       return alpha, J, J_new
 
     @jax.jit
@@ -140,7 +141,7 @@ class iLQRBraxReachability(iLQRBrax):
       K_closed_loop: DeviceArray, k_open_loop: DeviceArray, alpha: float
   ) -> Tuple[DeviceArray, DeviceArray, float, DeviceArray, DeviceArray,
              DeviceArray]:
-    X, U, fx, fu = self.rollout(
+    X, U, pipeline_states = self.rollout(
         initial_state, nominal_gc_states, nominal_controls, K_closed_loop, k_open_loop, alpha
     )
 
@@ -150,7 +151,7 @@ class iLQRBraxReachability(iLQRBrax):
 
     critical, reachable_margin = self.get_critical_points(failure_margins)
     J = (reachable_margin + jnp.sum(ctrl_costs)).astype(float)
-    return X, U, fx, fu, J, critical, failure_margins, reachable_margin
+    return X, U, pipeline_states, J, critical, failure_margins, reachable_margin
 
   @partial(jax.jit, static_argnames='self')
   def backward_pass(

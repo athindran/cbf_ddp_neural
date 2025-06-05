@@ -2,7 +2,7 @@ cost:
   # Safety DDP parameters
   COST_TYPE: Reachability
   # SAFETY COST PARAM
-  W_ctrl: [0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001]
+  W_ctrl: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
   MAX_VELOCITY: [5.0, 4.0, 4.0, 4.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0]
   SMOOTHING_TEMP: 3.0
 
