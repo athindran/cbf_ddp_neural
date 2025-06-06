@@ -12,6 +12,7 @@ from brax.training.agents.ppo import train as ppo
 from brax.io import model
 from brax import envs
 from brax_utils import ( WrappedBraxEnv, 
+      WrappedMJXEnv, 
       ReacherRegularizedGoalCost, 
       iLQRBrax, 
       iLQRBraxReachability, 
@@ -28,7 +29,7 @@ def get_neural_policy(env_name, backend):
       'reacher': functools.partial(ppo.train, num_timesteps=1, num_evals=1, reward_scaling=5, episode_length=1000, normalize_observations=True, action_repeat=4, unroll_length=50, num_minibatches=1, num_updates_per_batch=8, discounting=0.95, learning_rate=3e-4, entropy_cost=1e-3, num_envs=1, batch_size=256, max_devices_per_host=8, seed=1),
       'ant': functools.partial(ppo.train, num_timesteps=0, num_evals=1, reward_scaling=10, episode_length=1000, normalize_observations=True, action_repeat=1, unroll_length=5, num_minibatches=32, num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=4096, batch_size=2048, seed=1),
     }[env_name]
-    brax_env = WrappedBraxEnv(env_name, backend)
+    brax_env = get_brax_env(env_name, backend)
     make_inference_fn, params, _ = train_fn(environment=brax_env.env)
     params = model.load_params(f'./brax_utils/trained_models/{env_name}_params')
     inference_fn = make_inference_fn(params)
@@ -45,16 +46,23 @@ def warmup_jit_with_task_policy_rollout(rng, state, brax_env, task_policy, safet
     safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )), warmup=True)
 
     # Substitute for rejection sampling
-    for _ in range(10):
+    for _ in range(15):
       task_ctrl, _ = task_policy(state.obs, act_rng)
       safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )), warmup=True)
       state = brax_env.step(state, task_ctrl)
 
+def get_brax_env(env_name, backend):
+    if backend=='mjx':
+        return WrappedMJXEnv(env_name, backend)
+    else:
+        return WrappedBraxEnv(env_name, backend)
+
 
 def main(seed: int, env_name='reacher', policy_type="neural"):
     # @param ['ant', 'halfcheetah', 'hopper', 'humanoid', 'humanoidstandup', 'inverted_pendulum', 'inverted_double_pendulum', 'pusher', 'reacher', 'walker2d']
-    backend = 'generalized'  # @param ['generalized', 'positional', 'spring']
-    brax_env = WrappedBraxEnv(env_name, backend)
+    backend = 'mjx'  # @param ['generalized', 'positional', 'spring']
+    brax_env = get_brax_env(env_name, backend)
+
     rng = jax.random.PRNGKey(seed=seed)
     state = brax_env.reset(rng=rng)
     save_folder = f"./brax_videos/{env_name}/seed_{seed}"
@@ -74,13 +82,13 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       config_cost.N = config_solver.N
       reachability_cost = None
       if env_name=="reacher":
-        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
       elif env_name=="ant":
-        reachability_cost = AntReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+        reachability_cost = AntReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
       else:
         raise NotImplementedError("Other environments not implemented.")
 
-      safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      safe_policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
       # Warmup
       safe_policy.get_action(state, controls=None)
       T = config_solver.MAX_ITER_RECEDING
@@ -89,8 +97,8 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       config = load_config(f'./brax_utils/configs/{env_name}.yaml')
       config_solver = config['solver']
       cost = ReacherRegularizedGoalCost(center=brax_env._get_obs(state.pipeline_state)[4:6], 
-                                          env=WrappedBraxEnv(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
-      policy = iLQRBrax(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=cost, config=config_solver)
+                                          env=get_brax_env(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
+      policy = iLQRBrax(id=env_name, brax_env=get_brax_env(env_name, backend), cost=cost, config=config_solver)
       # Warmup
       policy.get_action(state, controls=None)
       T = config_solver.MAX_ITER_RECEDING
@@ -102,13 +110,13 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
 
       reachability_cost = None
       if env_name=="reacher":
-        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
       elif env_name=="ant":
-        reachability_cost = AntReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+        reachability_cost = AntReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
       else:
         raise NotImplementedError("Other environments not implemented.")
 
-      policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
       # Warmup
       policy.get_action(state, controls=None)
       T = config_solver.MAX_ITER_RECEDING
@@ -119,16 +127,16 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       config_cost.N = config_solver.N
       
       if env_name=="reacher":
-        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
       elif env_name=="ant":
         # NOTE: DOES NOT WORK
-        reachability_cost = AntReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
+        reachability_cost = AntReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
       else:
         raise NotImplementedError("Other environments not implemented.")
       
-      #safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      #safe_policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
       task_policy = get_neural_policy(env_name, backend)
-      brax_envs = [WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend)]
+      brax_envs = [get_brax_env(env_name, backend), get_brax_env(env_name, backend), get_brax_env(env_name, backend), get_brax_env(env_name, backend)]
       safety_filter =  iLQRBraxSafetyFilter(id=env_name, brax_envs=brax_envs, cost=reachability_cost, config=config_solver)
 
       # Warmup
@@ -145,12 +153,12 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       config_solver = config['solver']
       config_cost = config['cost']
       config_cost.N = config_solver.N
-      reachability_cost = ReacherReachabilityMargin(config=config_cost, env=WrappedBraxEnv(env_name, backend))
-      #safe_policy = iLQRBraxReachability(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=reachability_cost, config=config_solver)
+      reachability_cost = ReacherReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
+      #safe_policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
       cost = ReacherRegularizedGoalCost(center=brax_env._get_obs(state.pipeline_state)[4:6], 
-                                          env=WrappedBraxEnv(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
-      task_policy = iLQRBrax(id=env_name, brax_env=WrappedBraxEnv(env_name, backend), cost=cost, config=config_solver)
-      brax_envs = [WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend), WrappedBraxEnv(env_name, backend)]
+                                          env=get_brax_env(env_name, backend), ctrl_cost_matrix=-3*jnp.eye(2))
+      task_policy = iLQRBrax(id=env_name, brax_env=get_brax_env(env_name, backend), cost=cost, config=config_solver)
+      brax_envs = [get_brax_env(env_name, backend), get_brax_env(env_name, backend), get_brax_env(env_name, backend), get_brax_env(env_name, backend)]
       safety_filter =  iLQRBraxSafetyFilter(id=env_name, brax_envs=brax_envs, cost=reachability_cost, config=config_solver)
       # Warmup
       act_rng, rng = jax.random.split(rng)

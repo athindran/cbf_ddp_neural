@@ -94,6 +94,26 @@ class WrappedBraxEnv(ABC):
     def _get_obs(self, pipeline_state: State) -> jax.Array:
         return self.env._get_obs(pipeline_state)
 
+    def test_gc_rollout(self):
+        # FAILS - to provide information about MJX
+        rng = jax.random.PRNGKey(seed=0)
+        test_state = self.reset(rng=rng)
+
+        for _ in range(100):
+            action = np.random.rand(self.dim_u)
+            new_state = self.step(test_state, action)
+            print(test_state.pipeline_state.qpos, test_state.pipeline_state.qvel)
+            new_gc_state = self.step_generalized_coordinates(test_state, test_state.pipeline_state.qpos, test_state.pipeline_state.qvel, action)
+
+            np.testing.assert_allclose(new_state.pipeline_state.qpos, new_gc_state[0:self.dim_q_states], atol=1e-4, rtol=1e-4)
+            np.testing.assert_allclose(new_state.pipeline_state.qvel, new_gc_state[self.dim_q_states:], atol=1e-4, rtol=1e-4)
+
+            test_state = new_state
+
+        print("Unit test passed")
+
+        return True
+
     def plot_states_and_controls(self, save_dict, save_folder):
         states = save_dict['gc_states']
         ctrls = save_dict['actions']
@@ -228,3 +248,27 @@ class WrappedBraxEnv(ABC):
         fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
         fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'), bbox_inches='tight')
         plt.close()
+
+
+class WrappedMJXEnv(WrappedBraxEnv):
+
+    @partial(jax.jit, static_argnames='self')
+    def get_generalized_coordinates(self, state) -> jax.Array:
+        return jnp.concatenate([state.pipeline_state.qpos[0:self.dim_q_states], state.pipeline_state.qvel[0:self.dim_qd_states]], axis=-1) 
+
+    @partial(jax.jit, static_argnames=['self'])
+    def step_generalized_coordinates(self, state, qpos, qvel, action):
+        pipeline_state_qqd = state.pipeline_state.tree_replace({'qpos': qpos, 'qvel': qvel})
+        state_qqd = state.tree_replace({'pipeline_state': pipeline_state_qqd})
+        new_state = self.env.step(state_qqd, action)
+        new_generalized_coordinates = self.get_generalized_coordinates(new_state)
+        return new_generalized_coordinates
+    
+    @partial(jax.jit, static_argnames=['self'])
+    def get_generalized_coordinates_grad(self, state, action):
+        qpos = jnp.array(state.pipeline_state.qpos)
+        qvel = jnp.array(state.pipeline_state.qvel)
+        q_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=1)(state, qpos, qvel,  action)
+        qd_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=2)(state, qpos, qvel, action)
+        action_grad = jax.jacfwd(self.step_generalized_coordinates, argnums=3)(state, qpos, qvel, action)
+        return jnp.concatenate([q_grad[..., 0:self.dim_q_states], qd_grad[..., 0:self.dim_qd_states]], axis=-1), action_grad
