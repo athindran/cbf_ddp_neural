@@ -355,7 +355,7 @@ class iLQRReachAvoid(iLQR):
 
         return X, U, J, critical, failure_margins, target_margins, reachavoid_margin
 
-    """
+  """
   def brute_force_critical_cost(self, state_costs, target_costs):
     critical_cost_arr = np.zeros((self.N, ))
     for iters in range(self.N):

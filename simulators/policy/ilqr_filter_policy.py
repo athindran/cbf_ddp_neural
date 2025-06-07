@@ -45,7 +45,7 @@ class iLQRSafetyFilter(BasePolicy):
         self.dim_u = dyn.dim_u
         self.N = config.N
 
-        # Two ILQR solvers
+        # Three ILQR solvers
         if self.config.COST_TYPE == "Reachavoid":
             self.solver_0 = iLQRReachAvoid(
                 self.id, self.config, self.rollout_dyn_0, self.cost)
@@ -69,7 +69,7 @@ class iLQRSafetyFilter(BasePolicy):
         warmup=False,
     ) -> np.ndarray:
 
-        # Linear feedback policy
+        # Task feedback policy
         initial_state = np.array(state)
         stopping_ctrl = np.array([self.dyn.ctrl_space[0, 0], 0])
         task_ctrl = np.array(task_ctrl)
@@ -134,7 +134,6 @@ class iLQRSafetyFilter(BasePolicy):
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = np.linalg.norm(
                     control_0 - task_ctrl, ord=1)
-                #print("Filtered control safe", control_0)
                 if solver_info_0['is_inside_target']:
                     # Render the target set controlled invariant
                     return stopping_ctrl + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
@@ -248,7 +247,6 @@ class iLQRSafetyFilter(BasePolicy):
                     solver_info_1['controls'])
                 solver_info_0['reinit_states'] = jnp.array(
                     solver_info_1['states'])
-                #solver_info_0['reinit_J'] = solver_info_1['Vopt']
                 solver_info_0['num_iters'] = num_iters
                 solver_info_0['deviation'] = np.linalg.norm(
                     control_cbf_cand - task_ctrl, ord=1)

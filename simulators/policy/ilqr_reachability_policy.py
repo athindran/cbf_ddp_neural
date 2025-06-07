@@ -168,7 +168,6 @@ class iLQRReachability(iLQR):
         nominal_states, nominal_controls, K_closed_loop, k_open_loop, alpha
     )
 
-    # J = self.cost.get_traj_cost(X, U, closest_pt, slope, theta)
     failure_margins = self.cost.constraint.get_mapped_margin(X, U)
     ctrl_costs = self.cost.ctrl_cost.get_mapped_margin(X, U)
 
