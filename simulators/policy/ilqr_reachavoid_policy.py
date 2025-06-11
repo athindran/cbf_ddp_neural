@@ -347,38 +347,35 @@ class iLQRReachAvoid(iLQR):
 
         J = (reachavoid_margin + jnp.sum(ctrl_costs)).astype(float)
 
-        #reachavoid_margin_comp = self.brute_force_critical_cost(np.array(failure_margins), np.array(target_margins))
-        #assert jnp.abs(reachavoid_margin - reachavoid_margin_comp)==0
+        # reachavoid_margin_comp = self.brute_force_critical_cost(failure_margins, target_margins)
+        # jax.debug.print(" {error} ", error=jnp.abs(reachavoid_margin - reachavoid_margin_comp))
         #checked_margin = checkify.checkify(self.brute_force_critical_cost)
         #err, future_cost = checked_margin(failure_margins, target_margins, reachavoid_margin)
         # err.throw()
 
         return X, U, J, critical, failure_margins, target_margins, reachavoid_margin
 
-  """
-  def brute_force_critical_cost(self, state_costs, target_costs):
-    critical_cost_arr = np.zeros((self.N, ))
-    for iters in range(self.N):
-      min_avoid_cost = np.min(state_costs[0:iters+1])
-      critical_cost_arr[iters] = np.minimum(min_avoid_cost, target_costs[iters])
-    return np.max(critical_cost_arr)
+    #   def brute_force_critical_cost(self, state_costs, target_costs):
+    #     critical_cost_arr = np.zeros((self.N, ))
+    #     for iters in range(self.N):
+    #       min_avoid_cost = np.min(state_costs[0:iters+1])
+    #       critical_cost_arr[iters] = np.minimum(min_avoid_cost, target_costs[iters])
+    #     return np.max(critical_cost_arr)
 
-  #@partial(jax.jit, static_argnames='self')
-  def brute_force_critical_cost(self, failure_margins, target_margins):
-    critical_cost_arr = jnp.zeros((self.N, ))
+    # @partial(jax.jit, static_argnames='self')
+    # def brute_force_critical_cost(self, failure_margins, target_margins):
+    #     critical_cost_arr = jnp.zeros((self.N, ))
 
-    def forward_looper(idx, args):
-      critical_cost_arr, min_failure_margin = args
-      min_failure_margin = jnp.minimum(min_failure_margin, failure_margins[idx])
-      critical_cost_arr = critical_cost_arr.at[idx].set(jnp.minimum(min_failure_margin, target_margins[idx]))
-      return critical_cost_arr, min_failure_margin
+    #     def forward_looper(idx, args):
+    #         critical_cost_arr, min_failure_margin = args
+    #         min_failure_margin = jnp.minimum(min_failure_margin, failure_margins[idx])
+    #         critical_cost_arr = critical_cost_arr.at[idx].set(jnp.minimum(min_failure_margin, target_margins[idx]))
+    #         return critical_cost_arr, min_failure_margin
 
-    critical_cost_arr, _ = jax.lax.fori_loop(0, self.N, forward_looper, (critical_cost_arr, failure_margins[0]))
-    future_cost = jnp.max(critical_cost_arr)
-    #checkify.check( future_cost - compare_cost==0, "Reach-avoid cost error")
+    #     critical_cost_arr, _ = jax.lax.fori_loop(0, self.N, forward_looper, (critical_cost_arr, failure_margins[0]))
+    #     future_cost = jnp.max(critical_cost_arr)
 
-    return future_cost
-  """
+    #     return future_cost
 
     @partial(jax.jit, static_argnames='self')
     def backward_pass(
@@ -416,13 +413,13 @@ class iLQRReachAvoid(iLQR):
             #! Q_x, Q_xx are not used if this time step is critical.
             # Q_x = c_x[:, idx] + fx[:, :, idx].T @ V_x
             # Q_xx = c_xx[:, :, idx] + fx[:, :, idx].T @ V_xx @ fx[:, :, idx]
-            Q_ux = c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx]
+            Q_ux_reg = c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx]             
             Q_u = c_u[:, idx] + fu[:, :, idx].T @ V_x
-            Q_uu = c_uu[:, :, idx] + \
+            Q_uu_reg = c_uu[:, :, idx] + \
                 fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx]
 
-            Q_uu_inv = jnp.linalg.inv(Q_uu)
-            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
+            Q_uu_inv = jnp.linalg.inv(Q_uu_reg)
+            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux_reg)
             ks = ks.at[:, idx].set(-Q_uu_inv @ Q_u)
 
             return jnp.array(c_x[:, idx]), jnp.array(c_xx[:, :, idx]), ns, ks, Ks, jnp.array(
@@ -435,13 +432,13 @@ class iLQRReachAvoid(iLQR):
             #! Q_x, Q_xx are not used if this time step is critical.
             # Q_x = c_x[:, idx] + fx[:, :, idx].T @ V_x
             # Q_xx = c_xx[:, :, idx] + fx[:, :, idx].T @ V_xx @ fx[:, :, idx]
-            Q_ux = fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx]
+            Q_ux_reg = fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx]
             Q_u = c_u_t[:, idx] + fu[:, :, idx].T @ V_x
-            Q_uu = c_uu_t[:, :, idx] + \
-                fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx]
+            Q_uu_reg = (c_uu_t[:, :, idx] + \
+                fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx])
 
-            Q_uu_inv = jnp.linalg.inv(Q_uu)
-            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
+            Q_uu_inv = jnp.linalg.inv(Q_uu_reg)
+            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux_reg)            
             ks = ks.at[:, idx].set(-Q_uu_inv @ Q_u)
 
             return jnp.array(c_x_t[:, idx]), jnp.array(c_xx_t[:, :, idx]), ns, ks, Ks, jnp.array(
@@ -453,18 +450,27 @@ class iLQRReachAvoid(iLQR):
 
             Q_x = fx[:, :, idx].T @ V_x
             Q_xx = fx[:, :, idx].T @ V_xx @ fx[:, :, idx]
-            Q_ux = c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx]
+            Q_ux = c_ux[:, :, idx] + fu[:, :, idx].T @ V_xx @ fx[:, :, idx]
+            Q_ux_reg = c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx]
             Q_u = c_u[:, idx] + fu[:, :, idx].T @ V_x
             Q_uu = c_uu[:, :, idx] + \
+                fu[:, :, idx].T @ V_xx @ fu[:, :, idx]
+            Q_uu_reg = c_uu[:, :, idx] + \
                 fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx]
 
-            Q_uu_inv = jnp.linalg.inv(Q_uu)
-            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
-            kst = Q_uu_inv @ Q_u
-            ks = ks.at[:, idx].set(-kst)
+            Q_uu_inv = jnp.linalg.inv(Q_uu_reg)
+            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux_reg)
+            kst = -Q_uu_inv @ Q_u
+            ks = ks.at[:, idx].set(kst)
 
-            V_x_new = Q_x + Q_ux.T @ ks[:, idx]
-            V_xx_new = Q_xx + Q_ux.T @ Ks[:, :, idx]
+            # The terms will cancel out but for the regularization added. 
+            # See https://studywolf.wordpress.com/2016/02/03/the-iterative-linear-quadratic-regulator-method/ and references therein.
+            # V_x_new = Q_x + Q_ux.T @ ks[:, idx]
+            # V_xx_new = Q_xx + Q_ux.T @ Ks[:, :, idx]
+
+            V_x_new = Q_x + Ks[:, :, idx].T @ Q_u + Q_ux.T @ ks[:, idx] + Ks[:, :, idx].T @ Q_uu @ ks[:, idx]
+            V_xx_new = (Q_xx + Ks[:, :, idx].T @ Q_ux + Q_ux.T @ Ks[:, :, idx]
+                    + Ks[:, :, idx].T @ Q_uu @ Ks[:, :, idx])
 
             beta = - fu[:, :, idx] @ kst
             ns = ns.at[idx].set(ns[idx +
@@ -511,6 +517,7 @@ class iLQRReachAvoid(iLQR):
         V_xx_critical = jnp.zeros((self.dim_x, self.dim_x, ))
 
         reg_mat = self.eps * jnp.eye(self.dim_x)
+        reg_ctrl_mat = self.eps * jnp.eye(self.dim_u)
 
         # If critical is 2 choose target - hacky!!
         V_x, V_xx = jax.lax.cond(
@@ -565,14 +572,14 @@ class iLQRReachAvoid(iLQR):
             # Q_x = c_x[:, idx] + fx[:, :, idx].T @ V_x
             # Q_xx = c_xx[:, :, idx] + fx[:, :, idx].T @ V_xx @ fx[:, :, idx]
             Q_ux_append = jnp.einsum('i, ijk->jk', V_x, fux[:, :, :, idx])
-            Q_ux = (c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx] + Q_ux_append)
+            Q_ux_reg = (c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx] + Q_ux_append)             
             Q_u = c_u[:, idx] + fu[:, :, idx].T @ V_x
             Q_uu_append = jnp.einsum('i, ijk->jk', V_x, fuu[:, :, :, idx])
-            Q_uu = (c_uu[:, :, idx] + \
+            Q_uu_reg = (c_uu[:, :, idx] + \
                 fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx] + Q_uu_append)
 
-            Q_uu_inv = jnp.linalg.inv(Q_uu)
-            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
+            Q_uu_inv = jnp.linalg.inv(Q_uu_reg)
+            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux_reg)
             ks = ks.at[:, idx].set(-Q_uu_inv @ Q_u)
 
             return jnp.array(c_x[:, idx]), jnp.array(c_xx[:, :, idx]), ns, ks, Ks, jnp.array(
@@ -586,14 +593,14 @@ class iLQRReachAvoid(iLQR):
             # Q_x = c_x[:, idx] + fx[:, :, idx].T @ V_x
             # Q_xx = c_xx[:, :, idx] + fx[:, :, idx].T @ V_xx @ fx[:, :, idx]
             Q_ux_append = jnp.einsum('i, ijk->jk', V_x, fux[:, :, :, idx])
-            Q_ux = (fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx]  + Q_ux_append)
+            Q_ux_reg = (fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx] + Q_ux_append)       
             Q_u = c_u_t[:, idx] + fu[:, :, idx].T @ V_x
             Q_uu_append = jnp.einsum('i, ijk->jk', V_x, fuu[:, :, :, idx])
-            Q_uu = (c_uu_t[:, :, idx] + \
-                fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx] + Q_uu_append)
+            Q_uu_reg = (c_uu_t[:, :, idx] + \
+                fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx])
 
-            Q_uu_inv = jnp.linalg.inv(Q_uu)
-            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
+            Q_uu_inv = jnp.linalg.inv(Q_uu_reg)
+            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux_reg)
             ks = ks.at[:, idx].set(-Q_uu_inv @ Q_u)
 
             return jnp.array(c_x_t[:, idx]), jnp.array(c_xx_t[:, :, idx]), ns, ks, Ks, jnp.array(
@@ -607,19 +614,28 @@ class iLQRReachAvoid(iLQR):
             Q_xx_append = jnp.einsum('i, ijk->jk', V_x, fxx[:, :, :, idx])
             Q_xx = (fx[:, :, idx].T @ V_xx @ fx[:, :, idx] + Q_xx_append)
             Q_ux_append = jnp.einsum('i, ijk->jk', V_x, fux[:, :, :, idx])
-            Q_ux = (c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx] + Q_ux_append)
+            Q_ux = (c_ux[:, :, idx] + fu[:, :, idx].T @ V_xx @ fx[:, :, idx] + Q_ux_append)
+            Q_ux_reg = (c_ux[:, :, idx] + fu[:, :, idx].T @ (V_xx + reg_mat) @ fx[:, :, idx] + Q_ux_append)
             Q_u = c_u[:, idx] + fu[:, :, idx].T @ V_x
             Q_uu_append = jnp.einsum('i, ijk->jk', V_x, fuu[:, :, :, idx])
             Q_uu = (c_uu[:, :, idx] + \
+                fu[:, :, idx].T @ V_xx @ fu[:, :, idx] + Q_uu_append)
+            Q_uu_reg = (c_uu[:, :, idx] + \
                 fu[:, :, idx].T @ (V_xx + reg_mat) @ fu[:, :, idx] + Q_uu_append)
 
-            Q_uu_inv = jnp.linalg.inv(Q_uu)
-            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux)
-            kst = Q_uu_inv @ Q_u
-            ks = ks.at[:, idx].set(-kst)
+            Q_uu_inv = jnp.linalg.inv(Q_uu_reg)
+            Ks = Ks.at[:, :, idx].set(-Q_uu_inv @ Q_ux_reg)
+            kst = -Q_uu_inv @ Q_u
+            ks = ks.at[:, idx].set(kst)
 
-            V_x_new = Q_x + Q_ux.T @ ks[:, idx]
-            V_xx_new = Q_xx + Q_ux.T @ Ks[:, :, idx]
+            # The terms will cancel out but for the regularization added. 
+            # See https://studywolf.wordpress.com/2016/02/03/the-iterative-linear-quadratic-regulator-method/ and references therein.
+            # V_x_new = Q_x + Q_ux.T @ ks[:, idx]
+            # V_xx_new = Q_xx + Q_ux.T @ Ks[:, :, idx]
+
+            V_x_new = Q_x + Ks[:, :, idx].T @ Q_u + Q_ux.T @ ks[:, idx] + Ks[:, :, idx].T @ Q_uu @ ks[:, idx]
+            V_xx_new = (Q_xx + Ks[:, :, idx].T @ Q_ux + Q_ux.T @ Ks[:, :, idx]
+                    + Ks[:, :, idx].T @ Q_uu @ Ks[:, :, idx])
 
             beta = - fu[:, :, idx] @ kst
             ns = ns.at[idx].set(ns[idx +
@@ -666,6 +682,7 @@ class iLQRReachAvoid(iLQR):
         V_xx_critical = jnp.zeros((self.dim_x, self.dim_x, ))
 
         reg_mat = self.eps * jnp.eye(self.dim_x)
+        reg_ctrl_mat = self.eps * jnp.eye(self.dim_u)
 
         # If critical is 2 choose target - hacky!!
         V_x, V_xx = jax.lax.cond(

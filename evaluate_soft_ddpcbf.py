@@ -112,6 +112,11 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr):
     config_agent.is_task_ilqr = is_task_ilqr
     config_solver.FILTER_TYPE = filter_type
     config_agent.FILTER_TYPE = filter_type
+
+    # use only ILQR for comparison to CBF.
+    if filter_type == 'CBF':
+        config_solver.ORDER ='ILQR'
+
     config_cost = config['cost']
     dyn_id = config_agent.DYN
     plot_tag = config_env.tag

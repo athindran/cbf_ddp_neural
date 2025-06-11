@@ -18,6 +18,7 @@ from .policy.base_policy import BasePolicy
 from .policy.ilqr_policy import iLQR
 from .policy.ilqr_filter_policy import iLQRSafetyFilter
 from .policy.ilqr_reachavoid_policy import iLQRReachAvoid
+from .policy.ilqr_reachability_policy import iLQRReachability
 from .policy.manual_task_policies import bicycle_linear_task_policy, pvtol_linear_task_policy
 
 class Agent:
@@ -164,7 +165,11 @@ class Agent:
             self.policy = iLQR(self.id, config, self.dyn, cost, **kwargs)
         elif policy_type == "iLQRReachAvoid":
             self.policy = iLQRReachAvoid(
-                self.id, config, self.dyn, cost, **kwargs
+                self.id, config, self.dyn, cost
+            )
+        elif policy_type == "iLQRReachability":
+            self.policy = iLQRReachability(
+                self.id, config, self.dyn, cost
             )
         elif policy_type == "iLQRSafetyFilter":            
             if self.is_task_ilqr:
