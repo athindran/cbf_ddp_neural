@@ -25,7 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = " "
 jax.config.update('jax_platform_name', 'cpu')
 
 
-def main(config_file, road_boundary, filter_type, is_task_ilqr):
+def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
     # Callback after each timestep for plotting and summarizing evaluation
     def rollout_step_callback(
             env: CarSingle5DEnv,
@@ -109,6 +109,7 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr):
     config_env = config['environment']
     config_agent = config['agent']
     config_solver = config['solver']
+    config_solver.LINE_SEARCH = line_search
     config_agent.is_task_ilqr = is_task_ilqr
     config_solver.FILTER_TYPE = filter_type
     config_agent.FILTER_TYPE = filter_type
@@ -300,6 +301,10 @@ if __name__ == "__main__":
         default=2.0
     )
 
+    parser.add_argument(
+        "-ls", "--line_search", help="Choose line search", type=str,
+    )
+
     parser.add_argument('--naive_task', dest='naive_task', action='store_true')
     parser.add_argument(
         '--no-naive_task',
@@ -313,11 +318,12 @@ if __name__ == "__main__":
     
     out_folder, plot_tag, config_agent = None, None, None
     for filter_type in filters:
-        out_folder, plot_tag, config_agent = main(args.config_file, args.road_boundary, filter_type=filter_type, is_task_ilqr=(not args.naive_task))
+        out_folder, plot_tag, config_agent = main(args.config_file, args.road_boundary, filter_type=filter_type, is_task_ilqr=(not args.naive_task),         
+                                                    line_search=args.line_search)
 
     make_yaw_report(
         out_folder,
-        plot_folder='./plots_summary/',
+        plot_folder='./plots_summary_' + args.line_search + '/',
         tag=plot_tag + "_" + str(args.road_boundary,),
         road_boundary=args.road_boundary,
         dt=config_agent.DT,

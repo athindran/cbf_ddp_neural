@@ -21,6 +21,7 @@ class iLQR(BasePolicy):
         self.policy_type = "iLQR"
         self.dyn = copy.deepcopy(dyn)
         self.cost = copy.deepcopy(cost)
+        self.line_search = getattr(config, "LINE_SEARCH", 'baseline')
 
         # iLQR parameters
         self.dim_x = dyn.dim_x
@@ -30,6 +31,7 @@ class iLQR(BasePolicy):
         self.max_iter = config.MAX_ITER
         self.tol = 1e-5  # ILQR update tolerance.
         self.eps = getattr(config, "EPS", 1e-6)
+        self.min_alpha = 1e-12
         # Stepsize scheduler.
         self.alphas = 0.5**(np.arange(30))
 
@@ -130,8 +132,7 @@ class iLQR(BasePolicy):
         def _rollout_step(i, args):
             X, U = args
             u_fb = jnp.einsum(
-                "ik,k->i", K_closed_loop[:, :,
-                                         i], (X[:, i] - nominal_states[:, i])
+                "ik,k->i", K_closed_loop[:, :, i], (X[:, i] - nominal_states[:, i])
             )
             u = nominal_controls[:, i] + alpha * k_open_loop[:, i] + u_fb
             x_nxt, u_clip = self.dyn.integrate_forward_jax(X[:, i], u)

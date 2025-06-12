@@ -32,6 +32,7 @@ def main(config_file, filter_type, is_task_ilqr):
     config_agent.is_task_ilqr = is_task_ilqr
 
     config_solver = config['solver']
+    config_solver.LINE_SEARCH = 'baseline'
 
     # Hacks to get information everywhere.
     config_solver.is_task_ilqr = is_task_ilqr
@@ -276,7 +277,7 @@ if __name__ == "__main__":
     parser.set_defaults(naive_task=False)
 
     args = parser.parse_args()
-    is_task_ilqr = True
+    is_task_ilqr = False
     out_folder, plot_tag, config_agent = main(args.config_file, filter_type='SoftCBF', is_task_ilqr=is_task_ilqr)
     out_folder, plot_tag, config_agent = main(args.config_file, filter_type='CBF', is_task_ilqr=is_task_ilqr)
 

@@ -156,6 +156,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
         self.w_omega = config.W_OMEGA
         self.track_width_right = config.TRACK_WIDTH_RIGHT
         self.track_width_left = config.TRACK_WIDTH_LEFT
+        self.kappa = config.SMOOTHING_TEMP
 
         self.use_yaw = getattr(config, 'USE_YAW', False)
         self.use_vel = getattr(config, 'USE_VEL', False)
@@ -171,6 +172,9 @@ class Bicycle5DConstraintMargin(BaseMargin):
 
         self.dim_x = plan_dyn.dim_x
         self.dim_u = plan_dyn.dim_u
+
+        # for temporary visualization
+        self.target_constraint = CircleObsMargin(circle_spec=[4.1, 0.7, 0.4], buffer=0.0)
 
         self.obs_constraint = []
         if self.obsc_type == 'circle':
@@ -527,60 +531,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
                 road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons
             )
 
-class Bicycle5DSoftConstraintMargin(BaseMargin):
-    def __init__(self, config, plan_dyn):
-        super().__init__()
-        # System parameters.
-        self.ego_radius = config.EGO_RADIUS
-
-        # Racing cost parameters.
-        self.w_accel = config.W_ACCEL
-        self.w_omega = config.W_OMEGA
-        self.track_width_right = config.TRACK_WIDTH_RIGHT
-        self.track_width_left = config.TRACK_WIDTH_LEFT
-        self.kappa = config.SMOOTHING_TEMP
-
-        self.use_yaw = getattr(config, 'USE_YAW', False)
-        self.use_vel = getattr(config, 'USE_VEL', False)
-
-        self.use_road = config.USE_ROAD
-        self.use_delta = False
-
-        self.yaw_min = config.YAW_MIN
-        self.yaw_max = config.YAW_MAX
-        self.obs_spec = config.OBS_SPEC
-        self.obsc_type = config.OBSC_TYPE
-        self.plan_dyn = plan_dyn
-
-        self.dim_x = plan_dyn.dim_x
-        self.dim_u = plan_dyn.dim_u
-
-        self.obs_constraint = []
-        if self.obsc_type == 'circle':
-            for circle_spec in self.obs_spec:
-                self.obs_constraint.append(
-                    CircleObsMargin(
-                        circle_spec=circle_spec, buffer=config.EGO_RADIUS
-                    )
-                )
-        
-        self.road_position_min_cost = LowerHalfMargin(
-            value=-1 * config.TRACK_WIDTH_LEFT, buffer=config.EGO_RADIUS, dim=1)
-        self.road_position_max_cost = UpperHalfMargin(
-            value=config.TRACK_WIDTH_RIGHT, buffer=config.EGO_RADIUS, dim=1)
-
-        if self.use_yaw:
-            if plan_dyn.dim_x < 7:
-                self.yaw_min_cost = LowerHalfMargin(
-                    value=self.yaw_min, buffer=0, dim=3)
-                self.yaw_max_cost = UpperHalfMargin(
-                    value=self.yaw_max, buffer=0, dim=3)
-            else:
-                self.yaw_min_cost = LowerHalfMargin(
-                    value=self.yaw_min, buffer=0, dim=4)
-                self.yaw_max_cost = UpperHalfMargin(
-                    value=self.yaw_max, buffer=0, dim=4)
-
+class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
         self, state: DeviceArray, ctrl: DeviceArray
@@ -686,8 +637,10 @@ class Bicycle5DSoftConstraintMargin(BaseMargin):
 
         return target_cost
 
+class Bicycle5DTargetConstraintMargin(Bicycle5DSoftConstraintMargin):
+    
     @partial(jax.jit, static_argnames='self')
-    def get_safety_metric(
+    def get_target_stage_margin(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
         """
@@ -698,101 +651,7 @@ class Bicycle5DSoftConstraintMargin(BaseMargin):
         Returns:
             DeviceArray: scalar.
         """
-        @jax.jit
-        def roll_forward(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-
-            for _obs_constraint in self.obs_constraint:
-                _obs_constraint: BaseMargin
-                target_cost = jnp.minimum(target_cost, _obs_constraint.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-            if self.use_road:
-                target_cost = jnp.minimum(target_cost, self.road_position_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-                target_cost = jnp.minimum(target_cost, self.road_position_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-            if self.use_yaw:
-                target_cost = jnp.minimum(target_cost, self.yaw_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-                target_cost = jnp.minimum(target_cost, self.yaw_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-            current_state, _ = self.plan_dyn.integrate_forward_jax(
-                current_state, stopping_ctrl)
-
-            return current_state, stopping_ctrl, target_cost, v_min
-
-        @jax.jit
-        def check_stopped(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-            return current_state[2] > v_min
-
-        target_cost = jnp.inf
-
-        stopping_ctrl = jnp.array([self.plan_dyn.ctrl_space[0, 0], 0.])
-
-        current_state = jnp.array(state)
-
-        current_state, stopping_ctrl, target_cost, v_min = jax.lax.while_loop(
-            check_stopped, roll_forward, (current_state, stopping_ctrl, target_cost, self.plan_dyn.v_min))
-
-        _, _, target_cost, _ = roll_forward(
-            (current_state, stopping_ctrl, target_cost, v_min))
-
-        return target_cost
-
-
-    @partial(jax.jit, static_argnames='self')
-    def get_cost_dict(
-        self, state: DeviceArray, ctrl: DeviceArray
-    ) -> Dict:
-        """
-        Args:
-            state (DeviceArray, vector shape)
-            ctrl (DeviceArray, vector shape)
-
-        Returns:
-            DeviceArray: scalar.
-        """
-        road_min_cons = self.road_position_min_cost.get_stage_margin(
-            state, ctrl
-        )
-
-        road_max_cons = self.road_position_max_cost.get_stage_margin(
-            state, ctrl
-        )
-
-        obs_cons = jnp.inf
-        for _obs_constraint in self.obs_constraint:
-            _obs_constraint: BaseMargin
-            obs_cons = jnp.minimum(
-                obs_cons, _obs_constraint.get_stage_margin(
-                    state, ctrl))
-
-        if self.use_yaw:
-            yaw_min_cons = self.yaw_min_cost.get_stage_margin(
-                state, ctrl
-            )
-            yaw_max_cons = self.yaw_max_cost.get_stage_margin(
-                state, ctrl
-            )
-
-            return dict(
-                road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons, yaw_min_cons=yaw_min_cons, yaw_max_cons=yaw_max_cons
-            )
-        else:
-            return dict(
-                road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons
-            )
+        return -1*self.target_constraint.get_stage_margin(state, ctrl)
 
 class BicycleReachAvoid5DMargin(BaseMargin):
 

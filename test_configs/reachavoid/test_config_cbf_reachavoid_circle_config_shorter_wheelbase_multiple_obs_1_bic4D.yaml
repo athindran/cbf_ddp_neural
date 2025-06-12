@@ -88,6 +88,6 @@ solver:
   OUT_FOLDER: exps/ilqr/bic4D/reachavoid_experiment_shorter_wheelbase_mulobs_config1/
   DEVICE: cpu
   # options: 'ILQR', 'DDP'.
-  ORDER: 'DDP'
+  ORDER: 'ILQR'
   FIG_SIZE_X: 8
   FIG_SIZE_Y: 2.0
