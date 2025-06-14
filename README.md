@@ -9,6 +9,7 @@ TODO:
 - DDP - Done but not as stable as ILQR
 - Box obstacles - Done but the reach-avoid needs improvement.
 - Line searches - Done -  more line searches can be explored.
+- Look at other means of obtaining target functions such as using a learned target function for better reach-avoid results - 
 
 ### Brax testing
 
