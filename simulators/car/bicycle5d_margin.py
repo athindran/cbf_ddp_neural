@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import jax
 
 from simulators.costs.base_margin import BaseMargin, SoftBarrierEnvelope
-from simulators.costs.obs_margin import CircleObsMargin, BoxObsMargin
+from simulators.costs.obs_margin import CircleObsMargin, BoxObsMargin, SoftBoxObsMargin
 from simulators.costs.quadratic_penalty import QuadraticControlCost
 from simulators.costs.half_space_margin import LowerHalfMargin, UpperHalfMargin
 
@@ -188,7 +188,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
         elif self.obsc_type == 'box':
             for box_spec in self.obs_spec:
                 self.obs_constraint.append(
-                    BoxObsMargin(box_spec=box_spec, buffer=config.EGO_RADIUS)
+                    SoftBoxObsMargin(box_spec=box_spec, buffer=config.EGO_RADIUS)
                 )
 
         self.road_position_min_cost = LowerHalfMargin(

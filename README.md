@@ -7,7 +7,7 @@ TODO:
 - Rename 'jerk' to 'action_fluctuation' - Done
 - The `ilqr_filter_policy.py` and `base_single_env.py` needs urgent refactoring - Done
 - DDP - Done but not as stable as ILQR
-- Box obstacles - Done but the reach-avoid needs improvement.
+- Box obstacles - Done with better results with soft box constraints.
 - Line searches - Done -  more line searches can be explored.
 - Look at other means of obtaining target functions such as using a learned target function for better reach-avoid results - 
 

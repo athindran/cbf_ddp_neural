@@ -77,7 +77,7 @@ python evaluate_soft_ddpcbf.py -cf ./test_configs/reachavoid/test_config_cbf_rea
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachability/test_config_cbf_reachability_box_config_obs_1_bic5D.yaml -rb 4.0 -ls 'baseline'
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachability/test_config_cbf_reachability_box_config_obs_1_bic5D.yaml -rb 4.0 -ls 'armijo'
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachability/test_config_cbf_reachability_box_config_obs_1_bic5D.yaml -rb 4.0 -ls 'trust_region_tune_margin'
-# # Reach-avoid not good.
+# # Reach-avoid improves with soft box constraints.
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachavoid/test_config_cbf_reachavoid_box_config_obs_1_bic5D.yaml -rb 4.0 -ls 'baseline'
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachavoid/test_config_cbf_reachavoid_box_config_obs_1_bic5D.yaml -rb 4.0 -ls 'trust_region_tune_margin'
 
