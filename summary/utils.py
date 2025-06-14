@@ -30,7 +30,7 @@ def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solv
     for ax in axes:
       # track, obstacles, footprint
       env.render_obs(ax=ax, c=c_obs)
-      env.render_footprint(ax=ax, state=state_history[-3], c=c_ego)
+      env.render_footprint(ax=ax, state=state_history[0], c=c_ego)
       ax.axis(env.visual_extent)
       ax.set_aspect('equal')
 
@@ -212,7 +212,7 @@ def plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_so
     
 def plot_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
                      fig_folder="./", **kwargs):
-    if dyn_id == "Bicycle5D" or dyn_id == "Bicycle6D":
+    if dyn_id == "Bicycle5D" or dyn_id == "Bicycle4D":
         plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
                      fig_folder, **kwargs)
     elif dyn_id == "PVTOL6D":

@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import jax
 
 from simulators.costs.base_margin import BaseMargin, SoftBarrierEnvelope
-from simulators.costs.obs_margin import CircleObsMargin
+from simulators.costs.obs_margin import CircleObsMargin, BoxObsMargin
 from simulators.costs.quadratic_penalty import QuadraticControlCost
 from simulators.costs.half_space_margin import LowerHalfMargin, UpperHalfMargin
 
@@ -163,6 +163,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
 
         self.use_road = config.USE_ROAD
         self.use_delta = False
+        self.use_track_exit = False
 
         self.yaw_min = config.YAW_MIN
         self.yaw_max = config.YAW_MAX
@@ -184,6 +185,11 @@ class Bicycle5DConstraintMargin(BaseMargin):
                         circle_spec=circle_spec, buffer=config.EGO_RADIUS
                     )
                 )
+        elif self.obsc_type == 'box':
+            for box_spec in self.obs_spec:
+                self.obs_constraint.append(
+                    BoxObsMargin(box_spec=box_spec, buffer=config.EGO_RADIUS)
+                )
 
         self.road_position_min_cost = LowerHalfMargin(
             value=-1 * config.TRACK_WIDTH_LEFT, buffer=config.EGO_RADIUS, dim=1)
@@ -201,6 +207,12 @@ class Bicycle5DConstraintMargin(BaseMargin):
                     value=self.yaw_min, buffer=0, dim=4)
                 self.yaw_max_cost = UpperHalfMargin(
                     value=self.yaw_max, buffer=0, dim=4)
+
+        if self.use_vel:
+            self.vel_min_cost = LowerHalfMargin(value=0.0, buffer=0, dim=2)
+
+        if self.use_track_exit:
+            self.track_exit_cost = LowerHalfMargin(value=0.0, buffer=0, dim=0)
 
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
@@ -248,6 +260,16 @@ class Bicycle5DConstraintMargin(BaseMargin):
             )
             )
 
+        if self.use_vel:
+            cost = jnp.minimum(cost, self.vel_min_cost.get_stage_margin(
+                state, ctrl)
+            )
+
+        if self.use_track_exit:
+            cost = jnp.minimum(cost, self.track_exit_cost.get_stage_margin(
+                state, ctrl)
+            )
+
         return cost
 
     @partial(jax.jit, static_argnames='self')
@@ -283,6 +305,16 @@ class Bicycle5DConstraintMargin(BaseMargin):
                 target_cost = jnp.minimum(target_cost, self.yaw_max_cost.get_stage_margin(
                     current_state, stopping_ctrl
                 ))
+            
+            if self.use_vel:
+                target_cost = jnp.minimum(target_cost, self.vel_min_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+            if self.use_track_exit_cost:
+                target_cost = jnp.minimum(target_cost, self.track_exit_cost.get_stage_margin(
+                    state, ctrl)
+                )
 
             for _obs_constraint in self.obs_constraint:
                 _obs_constraint: BaseMargin
@@ -515,7 +547,11 @@ class Bicycle5DConstraintMargin(BaseMargin):
                 obs_cons, _obs_constraint.get_stage_margin(
                     state, ctrl))
 
-        if self.use_yaw:
+        if not self.use_yaw:
+            return dict(
+                road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons
+            )
+        else:
             yaw_min_cons = self.yaw_min_cost.get_stage_margin(
                 state, ctrl
             )
@@ -526,10 +562,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
             return dict(
                 road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons, yaw_min_cons=yaw_min_cons, yaw_max_cons=yaw_max_cons
             )
-        else:
-            return dict(
-                road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons
-            )
+
 
 class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
     @partial(jax.jit, static_argnames='self')
@@ -564,6 +597,16 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
                 state, ctrl
             ))
             cost += jnp.exp(-1 * self.kappa * self.yaw_min_cost.get_stage_margin(
+                state, ctrl
+            ))
+
+        if self.use_vel:
+            cost += jnp.exp(-1 * self.kappa * self.vel_min_cost.get_stage_margin(
+                state, ctrl
+            ))
+        
+        if self.use_track_exit:
+            cost += jnp.exp(-1 * self.kappa * self.track_exit_cost.get_stage_margin(
                 state, ctrl
             ))
 
@@ -607,6 +650,16 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
                 ))
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.yaw_min_cost.get_stage_margin(
                     current_state, stopping_ctrl
+                ))
+
+            if self.use_vel:
+                curr_target_cost += jnp.exp(-1 * self.kappa * self.vel_min_cost.get_stage_margin(
+                    state, ctrl
+                ))
+
+            if self.use_track_exit:
+                curr_target_cost += jnp.exp(-1 * self.kappa * self.track_exit_cost.get_stage_margin(
+                    state, ctrl
                 ))
 
             curr_target_cost = -jnp.log(curr_target_cost)/self.kappa

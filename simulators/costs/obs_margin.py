@@ -38,32 +38,49 @@ class CircleObsMargin(BaseMargin):
 
 
 class BoxObsMargin(BaseMargin):
-    """
-    We want s[i] < lb[i] or s[i] > ub[i].
-    """
 
     def __init__(
-        self, box_spec=np.ndarray,
-        buffer: float = 0.
+        self, box_spec: np.ndarray, buffer: float = 0.
     ):
+        """
+        Args:
+            box_spec (np.ndarray): [x, y, heading, half_length, half_width], spec
+                of the box obstacles.
+            buffer (float): the minimum required distance to the obstacle, i.e., if
+                the distance is smaller than `buffer`, the cost will be positive as
+                well. Defaults to 0.
+        """
         super().__init__()
-        self.ub = jnp.array(
-            [box_spec[0] + box_spec[3], box_spec[1] + box_spec[4]])
-        self.lb = jnp.array(
-            [box_spec[0] - box_spec[3], box_spec[1] - box_spec[4]])
-        self.n_dims = len(self.ub)
+        # Box obstacle
+        self.box_center = jnp.array([[box_spec[0]], [box_spec[1]]])
+        self.box_yaw = box_spec[2]
+        # rotate clockwise (to move the world frame to obstacle frame)
+        self.obs_rot_mat = jnp.array([[
+            jnp.cos(self.box_yaw), jnp.sin(self.box_yaw)
+        ], [-jnp.sin(self.box_yaw), jnp.cos(self.box_yaw)]])
+        self.box_halflength = box_spec[3]
+        self.box_halfwidth = box_spec[4]
         self.buffer = buffer
 
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
-        self, state: DeviceArray, ctrl: DeviceArray
+        self, state: DeviceArray, ctrl: DeviceArray,
     ) -> DeviceArray:
-        # signed distance to the box, positive inside
-        sgn_dist = jnp.minimum(state[0] - self.lb[0], self.ub[0] - state[0])
-        for i in range(1, self.n_dims):
-            sgn_dist = jnp.minimum(sgn_dist, self.ub[i] - state[i])
-            sgn_dist = jnp.minimum(sgn_dist, state[i] - self.lb[i])
-        return -sgn_dist - self.buffer
+        pos = state[0:2].reshape(2, -1)
+        pos_final = self.obs_rot_mat @ (pos - self.box_center)
+
+        diff_x = jnp.maximum(
+            pos_final[0] - self.box_halflength,
+            - self.box_halflength - pos_final[0]
+        )
+        diff_y = jnp.maximum(
+            pos_final[1] - self.box_halfwidth,
+            - self.box_halfwidth - pos_final[1]
+        )
+        diff = jnp.maximum(diff_x, diff_y)
+        diff = diff.squeeze()
+
+        return diff - self.buffer
 
     @partial(jax.jit, static_argnames='self')
     def get_target_stage_margin(

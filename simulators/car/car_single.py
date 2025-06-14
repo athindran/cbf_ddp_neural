@@ -54,6 +54,9 @@ class CarSingle5DEnv(BaseSingleEnv):
         if self.obsc_type == 'circle':
             for circle_spec in self.cost.constraint.obs_spec:
                 self.obs_vertices_list.append(circle_spec)
+        elif self.obsc_type == 'box':
+            for box_spec in self.cost.constraint.obs_spec:
+                self.obs_vertices_list.append(box_spec)
 
         # Initializes.
         self.reset_rej_sampling = getattr(
@@ -128,7 +131,7 @@ class CarSingle5DEnv(BaseSingleEnv):
             Dict: additional information of the step, such as target margin and
                 safety margin used in reachability analysis.
         """
-        self.min_velocity = 0.05
+        self.min_velocity = 0.02
         if end_criterion is None:
             end_criterion = self.end_criterion
 
@@ -345,12 +348,12 @@ class CarSingle5DEnv(BaseSingleEnv):
     def render_obs(self, ax, c: str = 'r'):
         if self.cost.constraint.obsc_type == 'box':
             for vertices in self.obs_vertices_list:
-                for i in range(4):
-                    if i == 3:
-                        ax.plot(vertices[[3, 0], 0], vertices[[3, 0], 1], c=c)
-                    else:
-                        ax.plot(vertices[i:i + 2, 0],
-                                vertices[i:i + 2, 1], c=c)
+                lower_vertex = vertices[0:2]
+                dimensions = vertices[2:4]
+                obs_rect = plt.Rectangle(
+                    [vertices[0] - vertices[3], vertices[1] - vertices[4]], 2*vertices[3], 
+                        2*vertices[4], angle = -np.rad2deg(vertices[2]), rotation_point='center', alpha=0.4, color=c)
+                ax.add_patch(obs_rect)
         elif self.cost.constraint.obsc_type == 'circle':
             for vertices in self.obs_vertices_list:
                 obs_circle = plt.Circle(

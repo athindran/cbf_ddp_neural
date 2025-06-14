@@ -4,16 +4,14 @@ This is a repository for using CBF-DDP with soft minimum and maximum operators i
 
 TODO:
 
-1) Rename 'jerk' to 'action_fluctuation' - DONE
-2) The `ilqr_filter_policy.py` and `base_single_env.py` needs urgent refactoring - DONE
-3) DDP - DONE but not as stable as ILQR
-3) Box obstackes - TBD
-4) Line searches - Done.
+- Rename 'jerk' to 'action_fluctuation' - Done
+- The `ilqr_filter_policy.py` and `base_single_env.py` needs urgent refactoring - Done
+- DDP - Done but not as stable as ILQR
+- Box obstacles - Done but the reach-avoid needs improvement.
+- Line searches - Done -  more line searches can be explored.
 
-### Test gradient extraction from brax.
+### Brax testing
 
-In MJX, it is more complicated to retrieve a sufficient state
+- Reacher produces meaningful results.
+- Ant does something but not entirely meaningful.
 
-Too slow on CPU. Maybe, try on GPU.
-
-More exploration to be done later.

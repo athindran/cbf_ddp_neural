@@ -1,0 +1,92 @@
+environment:
+  SEED: 0
+  NUM_AGENTS: 1
+  # TRACK
+  TRACK_LEN: 17
+  # LOOP: true
+  TIMEOUT: 100
+  # DONE FLAG PARAM
+  END_CRITERION: failure
+  G_X_FAIL: 0.0
+  OBSC_TYPE: box
+  OBS_SPEC:
+    - [5.5, 0.0, 0.4, 0.8, 0.3]
+    - [10.5, 3.0, 0.7, 0.3, 0.3]
+    - [10.5, -3.0, -0.3, 0.3, 0.3]
+    - [15.5, 0.0, 0.9, 0.5, 0.5]
+  RESET_SPACE:
+    - [0., 16.0]
+    - [-4.0, 4.0]
+    - [-1.5, 1.5]
+    - [-0.3, 0.3]
+    - [-0.15, 0.15]
+  tag: 'mul_obs_reachavoid_box_config1_bic5d'
+
+cost:
+  # Task policy tuned weights
+  WT_ACCEL: 0.01
+  WT_OMEGA: 0.01
+  W_TRACK: 0.01
+  W_VEL: 0.01
+  YAWT_MIN: -1.1
+  YAWT_MAX: 1.1
+  V_REF: 2.5
+  VT_MIN: 0.0
+  VT_MAX: 10.0
+  Q1_V: 0.1
+  Q2_V: 0.3
+  Q1_YAW: 0.1
+  Q2_YAW: 0.3
+  BARRIER_CLIP_MIN: -0.25
+  BARRIER_CLIP_MAX: 5.0
+  
+  # Safety DDP parameters
+  USE_YAW: false
+  USE_VEL: false
+  USE_DELTA: false
+  USE_ROAD: true
+  COST_TYPE: Reachavoid
+  # SAFETY COST PARAM
+  W_ACCEL: 0.1
+  W_OMEGA: 0.1
+  YAW_MIN: -1.57
+  YAW_MAX: 1.57
+  SMOOTHING_TEMP: 5.0
+
+agent:
+  AGENT_ID: ego
+  DYN: Bicycle5D
+  FOOTPRINT: Circle
+  EGO_RADIUS: 0.4
+  ACTION_RANGE:
+    - [-1.5, 1.5]
+    - [-3.0, 3.0]
+  # CAR DYNAMICS
+  WHEELBASE: 0.8
+  DT: 0.01
+  DELTA_MIN: -1.6  # rad
+  DELTA_MAX: 1.6
+  # VMIN should be zero
+  V_MIN: 0.0
+  V_MAX: 10.0
+
+solver:
+  INIT_STATE: [0.0, 0.0, 2.5, 0.05, 0.0]
+  N: 50
+  MAX_ITER: 20
+  MAX_ITER_RECEDING: 1300
+  # Line search options: 'baseline'.
+  # Baseline seems to be good enough for most cases.
+  LINE_SEARCH: 'baseline'
+  # Filter options: 'none', 'LR', 'CBF'
+  FILTER_TYPE: 'CBF'
+  CONSTRAINT_TYPE: 'quadratic'
+  CBF_GAMMA: 0.98
+  SOFT_CBF_GAMMA: 0.98
+  LR_THRESHOLD: 0.0
+  OUT_FOLDER: exps/ilqr/bic5D/reachavoid_experiment_mulobs_box_config1/
+  DEVICE: cpu
+  # options: 'ILQR', 'DDP'.
+  ORDER: 'ILQR'
+  FIG_SIZE_X: 8
+  FIG_SIZE_Y: 2.0
