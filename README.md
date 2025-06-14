@@ -8,7 +8,7 @@ TODO:
 2) The `ilqr_filter_policy.py` and `base_single_env.py` needs urgent refactoring - DONE
 3) DDP - DONE but not as stable as ILQR
 3) Box obstackes - TBD
-4) Line searches - To be explored again.
+4) Line searches - Done.
 
 ### Test gradient extraction from brax.
 
