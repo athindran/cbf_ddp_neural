@@ -9,6 +9,8 @@ TODO:
 - DDP - Done but not as stable as ILQR
 - Box obstacles - Done with better results with soft box constraints.
 - Line searches - Done -  more line searches can be explored.
+- Reach-avoid can be improved by increasing control cost weighting leaving it in a weird situation where the reachability weight is higher than Lagrange ILQR weight - Done
+- Velocity and delta constraints found to work with reachability and delta constraints with reach-avoid - Done
 - Look at other means of obtaining target functions such as using a learned target function for better reach-avoid results - 
 
 ### Brax testing
