@@ -85,3 +85,6 @@ python evaluate_soft_ddpcbf.py -cf ./test_configs/reachavoid/test_config_cbf_rea
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachability/test_config_cbf_reachability_ellipse_config_obs_1_bic5D.yaml -rb 4.0 -ls 'baseline'
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachavoid/test_config_cbf_reachavoid_ellipse_config_obs_1_bic5D.yaml -rb 4.0 -ls 'baseline'
 
+# Velocity and delta constraints
+python evaluate_soft_ddpcbf.py -cf ./test_configs/reachavoid/test_config_cbf_reachavoid_box_config_delta_constraint_bic5D.yaml -rb 4.0 -ls 'baseline'
+

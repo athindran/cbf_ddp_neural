@@ -43,7 +43,9 @@ cost:
   BARRIER_CLIP_MAX: 5.0
   
   # Safety DDP parameters
+  # Yaw constraint not compatible. Set to false.
   USE_YAW: false
+  # Velocity constraint is not applicable to the current reach-avoid formulation.
   USE_VEL: false
   USE_DELTA: false
   USE_ROAD: true

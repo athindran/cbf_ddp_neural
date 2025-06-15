@@ -158,15 +158,17 @@ class Bicycle5DConstraintMargin(BaseMargin):
         self.track_width_left = config.TRACK_WIDTH_LEFT
         self.kappa = config.SMOOTHING_TEMP
 
+        # Constraints toggling.
         self.use_yaw = getattr(config, 'USE_YAW', False)
         self.use_vel = getattr(config, 'USE_VEL', False)
-
-        self.use_road = config.USE_ROAD
-        self.use_delta = False
+        self.use_road = getattr(config, 'USE_ROAD', False)
+        self.use_delta = getattr(config, 'USE_DELTA', False)
         self.use_track_exit = False
+        self.yaw_min = getattr(config, 'YAW_MIN', -1.8)
+        self.yaw_max = getattr(config, 'YAW_MAX', 1.8)
+        self.delta_min = getattr(config, 'DELTA_MIN', -1.6)
+        self.delta_max = getattr(config, 'DELTA_MAX', 1.6)
 
-        self.yaw_min = config.YAW_MIN
-        self.yaw_max = config.YAW_MAX
         self.obs_spec = config.OBS_SPEC
         self.obsc_type = config.OBSC_TYPE
         self.plan_dyn = plan_dyn
@@ -212,6 +214,12 @@ class Bicycle5DConstraintMargin(BaseMargin):
                     value=self.yaw_min, buffer=0, dim=4)
                 self.yaw_max_cost = UpperHalfMargin(
                     value=self.yaw_max, buffer=0, dim=4)
+
+        if self.use_delta:
+            self.delta_min_cost = LowerHalfMargin(
+                value=self.delta_min, buffer=0, dim=4)
+            self.delta_max_cost = UpperHalfMargin(
+                value=self.delta_max, buffer=0, dim=4)
 
         if self.use_vel:
             self.vel_min_cost = LowerHalfMargin(value=0.0, buffer=0, dim=2)
@@ -265,6 +273,17 @@ class Bicycle5DConstraintMargin(BaseMargin):
             )
             )
 
+        if self.use_delta:
+            cost = jnp.minimum(cost, self.delta_min_cost.get_stage_margin(
+                state, ctrl
+            )
+            )
+
+            cost = jnp.minimum(cost, self.delta_max_cost.get_stage_margin(
+                state, ctrl
+            )
+            )
+
         if self.use_vel:
             cost = jnp.minimum(cost, self.vel_min_cost.get_stage_margin(
                 state, ctrl)
@@ -308,6 +327,15 @@ class Bicycle5DConstraintMargin(BaseMargin):
                 ))
 
                 target_cost = jnp.minimum(target_cost, self.yaw_max_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+            if self.use_delta:
+                target_cost = jnp.minimum(target_cost, self.delta_min_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+                target_cost = jnp.minimum(target_cost, self.delta_max_cost.get_stage_margin(
                     current_state, stopping_ctrl
                 ))
             
@@ -479,53 +507,6 @@ class Bicycle5DConstraintMargin(BaseMargin):
         return target_cost, c_x_target, c_xx_target
 
     @partial(jax.jit, static_argnames='self')
-    def get_safety_metric(
-        self, state: DeviceArray, ctrl: DeviceArray
-    ) -> DeviceArray:
-        """
-        Args:
-            state (DeviceArray, vector shape)
-            ctrl (DeviceArray, vector shape)
-
-        Returns:
-            DeviceArray: scalar.
-        """
-        @jax.jit
-        def roll_forward(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-
-            for _obs_constraint in self.obs_constraint:
-                _obs_constraint: BaseMargin
-                target_cost = jnp.minimum(target_cost, _obs_constraint.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-            current_state, _ = self.plan_dyn.integrate_forward_jax(
-                current_state, stopping_ctrl)
-
-            return current_state, stopping_ctrl, target_cost, v_min
-
-        @jax.jit
-        def check_stopped(args):
-            current_state, stopping_ctrl, target_cost, v_min = args
-            return current_state[2] > v_min
-
-        target_cost = jnp.inf
-
-        stopping_ctrl = jnp.array([self.plan_dyn.ctrl_space[0, 0], 0.])
-
-        current_state = jnp.array(state)
-
-        current_state, stopping_ctrl, target_cost, v_min = jax.lax.while_loop(
-            check_stopped, roll_forward, (current_state, stopping_ctrl, target_cost, self.plan_dyn.v_min))
-
-        _, _, target_cost, _ = roll_forward(
-            (current_state, stopping_ctrl, target_cost, v_min))
-
-        return target_cost
-
-
-    @partial(jax.jit, static_argnames='self')
     def get_cost_dict(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> Dict:
@@ -537,14 +518,6 @@ class Bicycle5DConstraintMargin(BaseMargin):
         Returns:
             DeviceArray: scalar.
         """
-        road_min_cons = self.road_position_min_cost.get_stage_margin(
-            state, ctrl
-        )
-
-        road_max_cons = self.road_position_max_cost.get_stage_margin(
-            state, ctrl
-        )
-
         obs_cons = jnp.inf
         for _obs_constraint in self.obs_constraint:
             _obs_constraint: BaseMargin
@@ -552,21 +525,42 @@ class Bicycle5DConstraintMargin(BaseMargin):
                 obs_cons, _obs_constraint.get_stage_margin(
                     state, ctrl))
 
-        if not self.use_yaw:
-            return dict(
-                road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons
+        cost_dict = dict(obs_cons=obs_cons)
+
+        if self.use_road:
+            road_min_cons = self.road_position_min_cost.get_stage_margin(
+                state, ctrl
             )
-        else:
+            road_max_cons = self.road_position_max_cost.get_stage_margin(
+                state, ctrl
+            )
+            cost_dict.update(dict(road_min_cons=road_min_cons, road_max_cons=road_max_cons))
+
+        if self.use_yaw:
             yaw_min_cons = self.yaw_min_cost.get_stage_margin(
                 state, ctrl
             )
             yaw_max_cons = self.yaw_max_cost.get_stage_margin(
                 state, ctrl
             )
-
-            return dict(
-                road_min_cons=road_min_cons, road_max_cons=road_max_cons, obs_cons=obs_cons, yaw_min_cons=yaw_min_cons, yaw_max_cons=yaw_max_cons
+            cost_dict.update(dict(yaw_min_cons=yaw_min_cons, yaw_max_cons=yaw_max_cons))
+        
+        if self.use_delta:
+            delta_min_cons = self.delta_min_cost.get_stage_margin(
+                state, ctrl
             )
+            delta_max_cons = self.delta_max_cost.get_stage_margin(
+                state, ctrl
+            )
+            cost_dict.update(dict(delta_min_cons=delta_min_cons, delta_max_cons=delta_max_cons))
+
+        if self.use_vel:
+            vel_min_cons = self.vel_min_cost.get_stage_margin(
+                state, ctrl
+            )
+            cost_dict.update(dict(vel_min_cons=vel_min_cons))
+
+        return cost_dict
 
 
 class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
@@ -605,6 +599,14 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
                 state, ctrl
             ))
 
+        if self.use_delta:
+            cost += jnp.exp(-1 * self.kappa * self.delta_max_cost.get_stage_margin(
+                state, ctrl
+            ))
+            cost += jnp.exp(-1 * self.kappa * self.delta_min_cost.get_stage_margin(
+                state, ctrl
+            ))
+
         if self.use_vel:
             cost += jnp.exp(-1 * self.kappa * self.vel_min_cost.get_stage_margin(
                 state, ctrl
@@ -618,6 +620,12 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
         cost = -jnp.log(cost)/self.kappa
 
         return cost
+
+    @partial(jax.jit, static_argnames='self')
+    def get_safety_metric(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        return self.get_target_stage_margin(state, ctrl)
 
     @partial(jax.jit, static_argnames='self')
     def get_target_stage_margin(
@@ -654,6 +662,14 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
                     current_state, stopping_ctrl
                 ))
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.yaw_min_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+
+            if self.use_delta:
+                curr_target_cost += jnp.exp(-1 * self.kappa * self.delta_max_cost.get_stage_margin(
+                    current_state, stopping_ctrl
+                ))
+                curr_target_cost += jnp.exp(-1 * self.kappa * self.delta_min_cost.get_stage_margin(
                     current_state, stopping_ctrl
                 ))
 

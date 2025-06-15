@@ -94,15 +94,17 @@ def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solv
     ax = axes[0]
     ax.plot(states[2, :])
     ax.set_xlabel("Timestep")
-    ax.set_ylabel("Velocity")
+    ax.set_ylabel("Velocity (m/s)")
     ax.grid()
     
-    # ax = axes[1]
-    # ax.plot(states[4, :])
-    # ax.set_xlabel("Timestep")
-    # ax.set_ylabel("Delta")
-    # ax.grid()
-    fig.savefig(os.path.join(fig_folder, "auxiliary_velocity.png"), dpi=200)
+    if states.shape[0]>4:
+        ax = axes[1]
+        ax.plot(states[4, :])
+        ax.set_xlabel("Timestep")
+        ax.set_ylabel("Road wheel angle (rad)")
+        ax.grid()
+
+    fig.savefig(os.path.join(fig_folder, "auxiliary_vel_rwa.png"), dpi=200)
 
     fig = plt.figure(figsize=(7, 4))
     plt.plot(kwargs["process_time_history"])
@@ -110,11 +112,11 @@ def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solv
     plt.xlabel('Time step')
     fig.savefig(os.path.join(fig_folder, "auxiliary_cycletimes.png"), dpi=200)
 
-    #fig = plt.figure(figsize=(7, 4))
-    #plt.plot(kwargs["solver_iters_history"])
-    #plt.ylabel('Solver iterations')
-    #plt.xlabel('Time step')
-    #fig.savefig(os.path.join(fig_folder, "auxiliary_cbfiters.png"), dpi=200)
+    fig = plt.figure(figsize=(7, 4))
+    plt.plot(kwargs["solver_iters_history"])
+    plt.ylabel('Solver iterations')
+    plt.xlabel('Time step')
+    fig.savefig(os.path.join(fig_folder, "auxiliary_cbfiters.png"), dpi=200)
 
 
 def plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
@@ -203,11 +205,11 @@ def plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_so
     plt.xlabel('Time step')
     fig.savefig(os.path.join(fig_folder, "auxiliary_cycletimes.png"), dpi=200)
 
-    #fig = plt.figure(figsize=(7, 4))
-    #plt.plot(kwargs["solver_iters_history"])
-    #plt.ylabel('Solver iterations')
-    #plt.xlabel('Time step')
-    #fig.savefig(os.path.join(fig_folder, "auxiliary_cbfiters.png"), dpi=200)
+    fig = plt.figure(figsize=(7, 4))
+    plt.plot(kwargs["solver_iters_history"])
+    plt.ylabel('Solver iterations')
+    plt.xlabel('Time step')
+    fig.savefig(os.path.join(fig_folder, "auxiliary_cbfiters.png"), dpi=200)
 
     
 def plot_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 

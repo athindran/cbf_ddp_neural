@@ -2,26 +2,26 @@ environment:
   SEED: 0
   NUM_AGENTS: 1
   # TRACK
-  TRACK_LEN: 13
+  TRACK_LEN: 16
   # LOOP: true
   TIMEOUT: 100
   # DONE FLAG PARAM
   END_CRITERION: failure
   G_X_FAIL: 0.0
-  OBSC_TYPE: circle
+  OBSC_TYPE: ellipse
   OBS_SPEC:
-    - [6.1, 1.3, 0.4]
-    - [6.1, 1.7, 0.5]
-    - [6.5, -1.9, 0.5]
-    - [11.5, 0.2, 0.6]
-    - [11.5, -0.2, 0.6]
+    - [4.5, 0.0, 0.05, 0.6, 0.3]
+    - [9.0, 2.0, 0.7, 0.3, 0.6]
+    - [9.0, -2.0, -0.3, 0.3, 0.6]
+    - [13.5, 0.0, 0.9, 0.5, 0.5]
+    - [14.0, 0.0, 0.4, 0.2, 0.7]
   RESET_SPACE:
-    - [0., 8.0]
-    - [-2.4, 2.4]
-    - [0.5, 1.5]
+    - [0., 16.0]
+    - [-4.0, 4.0]
+    - [-1.5, 1.5]
     - [-0.3, 0.3]
     - [-0.15, 0.15]
-  tag: 'mul_obs_config2_reachavoid_bic5d'
+  tag: 'mul_obs_reachability_ellipse_vel_delta_constraint_config1_bic5d'
 
 cost:
   # Task policy tuned weights
@@ -45,16 +45,18 @@ cost:
   # Yaw constraint not compatible. Set to false.
   USE_YAW: false
   # Velocity constraint is not applicable to the current reach-avoid formulation.
-  USE_VEL: false
-  USE_DELTA: false
+  USE_VEL: true
+  USE_DELTA: true
   USE_ROAD: true
-  COST_TYPE: Reachavoid
+  COST_TYPE: Reachability
   # SAFETY COST PARAM
   W_ACCEL: 0.05
   W_OMEGA: 0.05
   YAW_MIN: -1.57
   YAW_MAX: 1.57
-  SMOOTHING_TEMP: 3.0
+  DELTA_MIN: -0.5
+  DELTA_MAX: 0.5
+  SMOOTHING_TEMP: 4.0
 
 agent:
   AGENT_ID: ego
@@ -74,20 +76,20 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.1, 3.0, 0.05, 0.0]
+  INIT_STATE: [0.0, 0.0, 2.5, 0.05, 0.0]
   N: 50
   MAX_ITER: 20
-  MAX_ITER_RECEDING: 1500
+  MAX_ITER_RECEDING: 1200
   # Line search options: 'baseline'.
   # Baseline seems to be good enough for most cases.
   LINE_SEARCH: 'baseline'
   # Filter options: 'none', 'LR', 'CBF'
   FILTER_TYPE: 'CBF'
   CONSTRAINT_TYPE: 'quadratic'
-  CBF_GAMMA: 0.99
-  SOFT_CBF_GAMMA: 0.99
+  CBF_GAMMA: 0.98
+  SOFT_CBF_GAMMA: 0.98
   LR_THRESHOLD: 0.0
-  OUT_FOLDER: exps/ilqr/bic5D/reachavoid_experiment_mulobs_config2/
+  OUT_FOLDER: exps/ilqr/bic5D/reachability_experiment_vel_delta_constraint_mulobs_ellipse_config1/
   DEVICE: cpu
   # options: 'ILQR', 'DDP'.
   ORDER: 'DDP'
