@@ -25,8 +25,6 @@ class Bicycle4D(BaseDynamics):
 
         # load parameters
         self.wheelbase: float = config.WHEELBASE  # vehicle chassis length
-        self.delta_min = config.DELTA_MIN
-        self.delta_max = config.DELTA_MAX
         self.v_min = 0
         self.v_max = config.V_MAX
 
