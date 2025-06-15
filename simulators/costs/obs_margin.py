@@ -9,13 +9,20 @@ from .base_margin import BaseMargin
 
 class CircleObsMargin(BaseMargin):
     """
-    We want s[i] < lb[i] or s[i] > ub[i].
+    Distance-based cost to circular obstacle.
     """
 
     def __init__(
         self, circle_spec=np.ndarray,
         buffer: float = 0.
     ):
+        """
+        Args:
+            circle_spec (np.ndarray): [x, y, radius], spec of the circular obstacles.
+            buffer (float): the minimum required distance to the obstacle, i.e., if
+                the distance is smaller than `buffer`, the cost will be negative as
+                well. Defaults to 0.
+        """
         super().__init__()
         self.center = jnp.array(circle_spec[0:2])
         self.radius = circle_spec[2]
@@ -47,7 +54,7 @@ class BoxObsMargin(BaseMargin):
             box_spec (np.ndarray): [x, y, heading, half_length, half_width], spec
                 of the box obstacles.
             buffer (float): the minimum required distance to the obstacle, i.e., if
-                the distance is smaller than `buffer`, the cost will be positive as
+                the distance is smaller than `buffer`, the cost will be negative as
                 well. Defaults to 0.
         """
         super().__init__()
@@ -99,7 +106,7 @@ class SoftBoxObsMargin(BaseMargin):
             box_spec (np.ndarray): [x, y, heading, half_length, half_width], spec
                 of the box obstacles.
             buffer (float): the minimum required distance to the obstacle, i.e., if
-                the distance is smaller than `buffer`, the cost will be positive as
+                the distance is smaller than `buffer`, the cost will be negative as
                 well. Defaults to 0.
         """
         super().__init__()
@@ -138,3 +145,50 @@ class SoftBoxObsMargin(BaseMargin):
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
         return self.get_stage_margin(state, ctrl)
+
+class EllipseObsMargin(BaseMargin):
+
+    def __init__(
+        self, ellipse_spec: np.ndarray, buffer: float = 0.
+    ):
+        """
+        Args:
+            ellipse_spec (np.ndarray): [x, y, heading, half_length, half_width], spec
+                of the box obstacles.
+            buffer (float): the minimum required distance to the obstacle, i.e., if
+                the distance is smaller than `buffer`, the cost will be negative as
+                well. Defaults to 0.
+        """
+        super().__init__()
+        self.ellipse_center = jnp.array([[ellipse_spec[0]], [ellipse_spec[1]]])
+        self.ellipse_yaw = ellipse_spec[2]
+        self.ellipse_half_length = ellipse_spec[3]
+        self.ellipse_half_width = ellipse_spec[4]
+        self.obs_rot_mat = jnp.array([[jnp.cos(self.ellipse_yaw), jnp.sin(self.ellipse_yaw)], 
+                            [-jnp.sin(self.ellipse_yaw), jnp.cos(self.ellipse_yaw)]])
+        self.buffer = buffer
+        self.max_radius = jnp.maximum(self.ellipse_half_length, self.ellipse_half_width)
+
+    @partial(jax.jit, static_argnames='self')
+    def get_stage_margin(
+        self, state: DeviceArray, ctrl: DeviceArray,
+    ) -> DeviceArray:
+        """
+        This is not exactly the distance to the ellipse but only a cost function which is negative inside the ellipse
+        and positive outside.
+        """
+        pos = state[0:2].reshape(2, -1)
+        relative_vector = (pos - self.ellipse_center)
+        pos_final = self.obs_rot_mat @ relative_vector
+        buffer_margin_vector = self.buffer*pos_final /jnp.linalg.norm(pos_final , axis=0, keepdims=True)
+        pos_final = pos_final - buffer_margin_vector
+        obs_margin = jnp.sqrt((pos_final[0]/self.ellipse_half_length)**2 + (pos_final[1]/self.ellipse_half_width)**2) - 1.0
+
+        return obs_margin.squeeze()*self.max_radius
+
+    @partial(jax.jit, static_argnames='self')
+    def get_target_stage_margin(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        return self.get_stage_margin(state, ctrl)
+

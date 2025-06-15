@@ -1,6 +1,8 @@
 from typing import Dict, Tuple, Optional, Union
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.patches import Ellipse
+
 import matplotlib
 from gym import spaces
 
@@ -57,6 +59,9 @@ class CarSingle5DEnv(BaseSingleEnv):
         elif self.obsc_type == 'box':
             for box_spec in self.cost.constraint.obs_spec:
                 self.obs_vertices_list.append(box_spec)
+        elif self.obsc_type == 'ellipse':
+            for ellipse_spec in self.cost.constraint.obs_spec:
+                self.obs_vertices_list.append(ellipse_spec)     
 
         # Initializes.
         self.reset_rej_sampling = getattr(
@@ -359,6 +364,12 @@ class CarSingle5DEnv(BaseSingleEnv):
                 obs_circle = plt.Circle(
                     [vertices[0], vertices[1]], vertices[2], alpha=0.4, color=c)
                 ax.add_patch(obs_circle)
+        elif self.cost.constraint.obsc_type == 'ellipse':
+            for vertices in self.obs_vertices_list:
+                obs_ellipse = Ellipse(
+                    [vertices[0], vertices[1]], 2*vertices[3], 2*vertices[4], 
+                        angle = -np.rad2deg(vertices[2]), alpha=0.4, color=c)
+                ax.add_patch(obs_ellipse)
 
     def render_state_cost_map(
         self, ax, nx: int, ny: int, vel: float, yaw: float, delta: float,
@@ -430,7 +441,12 @@ class CarSingle5DEnv(BaseSingleEnv):
 
     def report(self):
         if self.track_len is not None:
-            print("Straight road, circle footprint, circle obstacles!")
+            if self.obsc_type == 'circle':
+                print("Straight road, circle footprint, circle obstacles!")
+            elif self.obsc_type == 'box':
+                print("Straight road, circle footprint, box obstacles!")
+            elif self.obsc_type == 'ellipse':
+                print("Straight road, circle footprint, ellipse obstacles!")
         else:
             print("road from file, circle footprint, circle obstacles!")
 

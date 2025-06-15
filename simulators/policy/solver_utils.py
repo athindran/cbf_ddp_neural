@@ -41,7 +41,7 @@ def barrier_filter_quadratic_two(P, p, c, initialize, control_bias_term=np.zeros
         u = cp.Variable((2))
         u.value = np.array(initialize)
         p = np.array(p)
-        prob = cp.Problem(cp.Minimize(1.0 * cp.square(u[0] + control_bias_term[0]) + 1.0 * cp.square(u[1] + control_bias_term[1])),
+        prob = cp.Problem(cp.Minimize(1.0 * cp.square(u[0]) + 1.0 * cp.square(u[1])),
                           [p @ u + c >= 0])
         try:
             prob.solve(verbose=False, warm_start=True)
