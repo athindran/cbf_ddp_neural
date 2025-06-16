@@ -357,7 +357,7 @@ class CarSingle5DEnv(BaseSingleEnv):
                 dimensions = vertices[2:4]
                 obs_rect = plt.Rectangle(
                     [vertices[0] - vertices[3], vertices[1] - vertices[4]], 2*vertices[3], 
-                        2*vertices[4], angle = -np.rad2deg(vertices[2]), rotation_point='center', alpha=0.4, color=c)
+                        2*vertices[4], angle = np.rad2deg(vertices[2]), rotation_point='center', alpha=0.4, color=c)
                 ax.add_patch(obs_rect)
         elif self.cost.constraint.obsc_type == 'circle':
             for vertices in self.obs_vertices_list:
@@ -368,7 +368,7 @@ class CarSingle5DEnv(BaseSingleEnv):
             for vertices in self.obs_vertices_list:
                 obs_ellipse = Ellipse(
                     [vertices[0], vertices[1]], 2*vertices[3], 2*vertices[4], 
-                        angle = -np.rad2deg(vertices[2]), alpha=0.4, color=c)
+                        angle = np.rad2deg(vertices[2]), alpha=0.4, color=c)
                 ax.add_patch(obs_ellipse)
 
     def render_state_cost_map(

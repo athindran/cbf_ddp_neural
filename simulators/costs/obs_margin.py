@@ -67,10 +67,10 @@ class BoxObsMargin(BaseMargin):
         # Box obstacle
         self.box_center = jnp.array([[box_spec[0]], [box_spec[1]]])
         self.box_yaw = box_spec[2]
-        # rotate anti-clockwise (to move the point from world frame to obstacle frame)
+        # rotate clockwise (to move the point from world frame to obstacle frame)
         self.obs_rot_mat = jnp.array([[
-            jnp.cos(self.box_yaw), -jnp.sin(self.box_yaw)
-        ], [jnp.sin(self.box_yaw), jnp.cos(self.box_yaw)]])
+            jnp.cos(self.box_yaw), jnp.sin(self.box_yaw)
+        ], [-jnp.sin(self.box_yaw), jnp.cos(self.box_yaw)]])
         self.box_halflength = box_spec[3]
         self.box_halfwidth = box_spec[4]
         self.buffer = buffer
@@ -121,13 +121,13 @@ class SoftBoxObsMargin(BaseMargin):
         # Box obstacle
         self.box_center = jnp.array([[box_spec[0]], [box_spec[1]]])
         self.box_yaw = box_spec[2]
-        # rotate anti-clockwise (to move the point from world frame to obstacle frame)
+        # rotate clockwise (to move the point from world frame to obstacle frame)
         self.obs_rot_mat = jnp.array([[
-            jnp.cos(self.box_yaw), -jnp.sin(self.box_yaw)
-        ], [jnp.sin(self.box_yaw), jnp.cos(self.box_yaw)]])
+            jnp.cos(self.box_yaw), jnp.sin(self.box_yaw)
+        ], [-jnp.sin(self.box_yaw), jnp.cos(self.box_yaw)]])
         self.box_halflength = box_spec[3]
         self.box_halfwidth = box_spec[4]
-        self.box_kappa = 4.0
+        self.box_kappa = 5.0
         self.buffer = buffer
 
     @partial(jax.jit, static_argnames='self')
@@ -178,9 +178,9 @@ class EllipseObsMargin(BaseMargin):
         self.ellipse_yaw = ellipse_spec[2]
         self.ellipse_half_length = ellipse_spec[3]
         self.ellipse_half_width = ellipse_spec[4]
-        # rotate anti-clockwise (to move the point from world frame to obstacle frame)
-        self.obs_rot_mat = jnp.array([[jnp.cos(self.ellipse_yaw), -jnp.sin(self.ellipse_yaw)], 
-                                        [jnp.sin(self.ellipse_yaw), jnp.cos(self.ellipse_yaw)]])
+        # rotate clockwise (to move the point from world frame to obstacle frame)
+        self.obs_rot_mat = jnp.array([[jnp.cos(self.box_yaw), jnp.sin(self.box_yaw)], 
+                    [-jnp.sin(self.box_yaw), jnp.cos(self.box_yaw)]])
         # This is a conservative approximation of how much units of cost margin we provide to the buffer.
         # A better approximation would be the to sample footprint and choose minimum or smooth minimum.
         # We use this approximaiton for speed and smoothness.
