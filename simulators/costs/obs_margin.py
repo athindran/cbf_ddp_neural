@@ -104,7 +104,7 @@ class BoxObsMargin(BaseMargin):
 
 class SoftBoxObsMargin(BaseMargin):
     """
-    This is a soft approximation of BoxObsMargin.
+    This is a soft approximation of BoxObsMargin which is strictly negative inside the box.
     """
     def __init__(
         self, box_spec: np.ndarray, buffer: float = 0.
