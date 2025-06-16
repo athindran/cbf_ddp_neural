@@ -45,6 +45,12 @@ class CircleObsMargin(BaseMargin):
 
 
 class BoxObsMargin(BaseMargin):
+    """
+    This is not exactly the L2 distance to the box but only a cost function which is negative inside the box
+    and positive outside.
+    First, rotate the coordinate axes along the perpendicular axes of the box. Then, we find the distance along each
+    axis from the box to the center of the circular footprint. Then, subtract the radius of circle.
+    """
 
     def __init__(
         self, box_spec: np.ndarray, buffer: float = 0.
@@ -97,7 +103,9 @@ class BoxObsMargin(BaseMargin):
 
 
 class SoftBoxObsMargin(BaseMargin):
-
+    """
+    This is a soft approximation of BoxObsMargin.
+    """
     def __init__(
         self, box_spec: np.ndarray, buffer: float = 0.
     ):
@@ -147,6 +155,12 @@ class SoftBoxObsMargin(BaseMargin):
         return self.get_stage_margin(state, ctrl)
 
 class EllipseObsMargin(BaseMargin):
+    """
+    This is not exactly the distance to the ellipse but only a cost function which is negative inside the ellipse
+    and positive outside. We check whether (x^2/a^2 + y^2/b^2 - 1.0)<=0.0 to determine whether a point is inside 
+    the ellipse. The circular footprint is provided a buffer corresponding to ego-radius. This buffer is converted to
+    cost function units by dividing by minimum(a, b). This approximation can be costly if the ellipse is skewed.
+    """
 
     def __init__(
         self, ellipse_spec: np.ndarray, buffer: float = 0.
@@ -176,10 +190,6 @@ class EllipseObsMargin(BaseMargin):
     def get_stage_margin(
         self, state: DeviceArray, ctrl: DeviceArray,
     ) -> DeviceArray:
-        """
-        This is not exactly the distance to the ellipse but only a cost function which is negative inside the ellipse
-        and positive outside.
-        """
         pos = state[0:2].reshape(2, -1)
         relative_vector = (pos - self.ellipse_center)
         pos_final = self.obs_rot_mat @ relative_vector
