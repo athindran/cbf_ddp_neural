@@ -166,8 +166,11 @@ class EllipseObsMargin(BaseMargin):
         self.ellipse_half_width = ellipse_spec[4]
         self.obs_rot_mat = jnp.array([[jnp.cos(self.ellipse_yaw), jnp.sin(self.ellipse_yaw)], 
                             [-jnp.sin(self.ellipse_yaw), jnp.cos(self.ellipse_yaw)]])
-        self.buffer = buffer
-        self.max_radius = jnp.maximum(self.ellipse_half_length, self.ellipse_half_width)
+        # This is a conservative approximation of how much units of cost margin we provide to the buffer.
+        # A better approximation would be the to sample footprint and choose minimum or smooth minimum.
+        # We use this approximaiton for speed and smoothness.
+        self.buffer_margin = buffer/jnp.minimum(self.ellipse_half_length, self.ellipse_half_width)
+        self.avg_radius = (self.ellipse_half_length + self.ellipse_half_width)/2.0
 
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
@@ -180,11 +183,8 @@ class EllipseObsMargin(BaseMargin):
         pos = state[0:2].reshape(2, -1)
         relative_vector = (pos - self.ellipse_center)
         pos_final = self.obs_rot_mat @ relative_vector
-        buffer_margin_vector = self.buffer*pos_final /jnp.linalg.norm(pos_final , axis=0, keepdims=True)
-        pos_final = pos_final - buffer_margin_vector
-        obs_margin = jnp.sqrt((pos_final[0]/self.ellipse_half_length)**2 + (pos_final[1]/self.ellipse_half_width)**2) - 1.0
-
-        return obs_margin.squeeze()*self.max_radius
+        obs_margin = jnp.sqrt((pos_final[0]/self.ellipse_half_length)**2 + (pos_final[1]/self.ellipse_half_width)**2) - 1.0 - self.buffer_margin
+        return obs_margin.squeeze()*self.avg_radius
 
     @partial(jax.jit, static_argnames='self')
     def get_target_stage_margin(
