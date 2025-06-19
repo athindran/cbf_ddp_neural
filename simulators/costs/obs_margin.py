@@ -179,8 +179,8 @@ class EllipseObsMargin(BaseMargin):
         self.ellipse_half_length = ellipse_spec[3]
         self.ellipse_half_width = ellipse_spec[4]
         # rotate clockwise (to move the point from world frame to obstacle frame)
-        self.obs_rot_mat = jnp.array([[jnp.cos(self.box_yaw), jnp.sin(self.box_yaw)], 
-                    [-jnp.sin(self.box_yaw), jnp.cos(self.box_yaw)]])
+        self.obs_rot_mat = jnp.array([[jnp.cos(self.ellipse_yaw), jnp.sin(self.ellipse_yaw)], 
+                    [-jnp.sin(self.ellipse_yaw), jnp.cos(self.ellipse_yaw)]])
         # This is a conservative approximation of how much units of cost margin we provide to the buffer.
         # A better approximation would be the to sample footprint and choose minimum or smooth minimum.
         # We use this approximaiton for speed and smoothness.
