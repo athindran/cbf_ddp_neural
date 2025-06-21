@@ -241,18 +241,20 @@ class Bicycle5DConstraintMargin(BaseMargin):
         """
         cost = jnp.inf
 
+        state_offset = self.plan_dyn.apply_rear_offset_correction(state)
+
         if self.use_road:
             cost = jnp.minimum(
                 cost,
                 self.road_position_min_cost.get_stage_margin(
-                    state, ctrl
+                    state_offset, ctrl
                 )
             )
 
             cost = jnp.minimum(
                 cost,
                 self.road_position_max_cost.get_stage_margin(
-                    state, ctrl
+                    state_offset, ctrl
                 )
             )
 
@@ -260,38 +262,38 @@ class Bicycle5DConstraintMargin(BaseMargin):
             _obs_constraint: BaseMargin
             cost = jnp.minimum(
                 cost, _obs_constraint.get_stage_margin(
-                    state, ctrl))
+                    state_offset, ctrl))
 
         if self.use_yaw:
             cost = jnp.minimum(cost, self.yaw_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             )
 
             cost = jnp.minimum(cost, self.yaw_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             )
 
         if self.use_delta:
             cost = jnp.minimum(cost, self.delta_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             )
 
             cost = jnp.minimum(cost, self.delta_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             )
 
         if self.use_vel:
             cost = jnp.minimum(cost, self.vel_min_cost.get_stage_margin(
-                state, ctrl)
+                state_offset, ctrl)
             )
 
         if self.use_track_exit:
             cost = jnp.minimum(cost, self.track_exit_cost.get_stage_margin(
-                state, ctrl)
+                state_offset, ctrl)
             )
 
         return cost
@@ -312,47 +314,39 @@ class Bicycle5DConstraintMargin(BaseMargin):
         def roll_forward(args):
             current_state, stopping_ctrl, target_cost, v_min = args
 
+            current_state_offset = self.plan_dyn.apply_rear_offset_correction(current_state)
+
             if self.use_road:
                 target_cost = jnp.minimum(target_cost, self.road_position_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
                 target_cost = jnp.minimum(target_cost, self.road_position_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
             if self.use_yaw:
                 target_cost = jnp.minimum(target_cost, self.yaw_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
                 target_cost = jnp.minimum(target_cost, self.yaw_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
             if self.use_delta:
                 target_cost = jnp.minimum(target_cost, self.delta_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
                 target_cost = jnp.minimum(target_cost, self.delta_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
-            
-            if self.use_vel:
-                target_cost = jnp.minimum(target_cost, self.vel_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-            if self.use_track_exit:
-                target_cost = jnp.minimum(target_cost, self.track_exit_cost.get_stage_margin(
-                    state, ctrl)
-                )
 
             for _obs_constraint in self.obs_constraint:
                 _obs_constraint: BaseMargin
                 target_cost = jnp.minimum(target_cost, _obs_constraint.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
             current_state, _ = self.plan_dyn.integrate_forward_jax(
@@ -409,6 +403,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
         def roll_forward(args):
             current_state, stopping_ctrl, target_cost, v_min, c_x_target, c_xx_target, iters, pinch_point, f_x_all = args
 
+            current_state_offset = self.plan_dyn.apply_rear_offset_correction(current_state)
             #f_x_curr, f_u_curr = self.plan_dyn.get_jacobian(current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
             #f_x_all = f_x_all.at[:, :, iters].set(f_x_curr[:, :, -1])
             f_x_all = f_x_all.at[:, :, iters].set(
@@ -417,51 +412,51 @@ class Bicycle5DConstraintMargin(BaseMargin):
             for _obs_constraint in self.obs_constraint:
                 _obs_constraint: BaseMargin
                 new_cost = _obs_constraint.get_stage_margin(
-                    current_state, stopping_ctrl)
+                    current_state_offset, stopping_ctrl)
                 c_x_new = _obs_constraint.get_cx(
-                    current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                    current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 c_xx_new = _obs_constraint.get_cxx(
-                    current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                    current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 target_cost, c_x_target, c_xx_target, pinch_point = jax.lax.cond(new_cost < target_cost, true_fn, false_fn, (
                     new_cost, target_cost, c_x_target, c_xx_target, c_x_new, c_xx_new, iters, pinch_point))
 
             if self.use_road:
                 new_cost = self.road_position_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl)
+                    current_state_offset, stopping_ctrl)
                 c_x_new = self.road_position_min_cost.get_cx(
-                    current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                    current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 # Half space cost has no second derivative
-                #c_xx_new = self.road_position_min_cost.get_cxx(current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                #c_xx_new = self.road_position_min_cost.get_cxx(current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 c_xx_new = jnp.zeros((self.dim_x, self.dim_x, 1))
                 target_cost, c_x_target, c_xx_target, pinch_point = jax.lax.cond(new_cost < target_cost, true_fn, false_fn, (
                     new_cost, target_cost, c_x_target, c_xx_target, c_x_new, c_xx_new, iters, pinch_point))
 
                 new_cost = self.road_position_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl)
+                    current_state_offset, stopping_ctrl)
                 c_x_new = self.road_position_max_cost.get_cx(
-                    current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                    current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 # Half space cost has no second derivative
                 c_xx_new = jnp.zeros((self.dim_x, self.dim_x, 1))
-                #c_xx_new = self.road_position_max_cost.get_cxx(current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                #c_xx_new = self.road_position_max_cost.get_cxx(current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 target_cost, c_x_target, c_xx_target, pinch_point = jax.lax.cond(new_cost < target_cost, true_fn, false_fn, (
                     new_cost, target_cost, c_x_target, c_xx_target, c_x_new, c_xx_new, iters, pinch_point))
 
             if self.use_yaw:
                 new_cost = self.yaw_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl)
+                    current_state_offset, stopping_ctrl)
                 c_x_new = self.yaw_min_cost.get_cx(
-                    current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                    current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 # Half space cost has no second derivative
                 c_xx_new = jnp.zeros((self.dim_x, self.dim_x, 1))
                 target_cost, c_x_target, c_xx_target, pinch_point = jax.lax.cond(new_cost < target_cost, true_fn, false_fn, (
                     new_cost, target_cost, c_x_target, c_xx_target, c_x_new, c_xx_new, iters, pinch_point))
 
                 new_cost = self.yaw_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl)
+                    current_state_offset, stopping_ctrl)
                 c_x_new = self.yaw_max_cost.get_cx(
-                    current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                    current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 # Half space cost has no second derivative
-                #c_xx_new = self.yaw_max_cost.get_cxx(current_state[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
+                #c_xx_new = self.yaw_max_cost.get_cxx(current_state_offset[:, jnp.newaxis], stopping_ctrl[:, jnp.newaxis])
                 c_xx_new = jnp.zeros((self.dim_x, self.dim_x, 1))
                 target_cost, c_x_target, c_xx_target, pinch_point = jax.lax.cond(new_cost < target_cost, true_fn, false_fn, (
                     new_cost, target_cost, c_x_target, c_xx_target, c_x_new, c_xx_new, iters, pinch_point))
@@ -525,44 +520,46 @@ class Bicycle5DConstraintMargin(BaseMargin):
             DeviceArray: scalar.
         """
         obs_cons = jnp.inf
+        state_offset = self.plan_dyn.apply_rear_offset_correction(state)
+
         for _obs_constraint in self.obs_constraint:
             _obs_constraint: BaseMargin
             obs_cons = jnp.minimum(
                 obs_cons, _obs_constraint.get_stage_margin(
-                    state, ctrl))
+                    state_offset, ctrl))
 
         cost_dict = dict(obs_cons=obs_cons)
 
         if self.use_road:
             road_min_cons = self.road_position_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             road_max_cons = self.road_position_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             cost_dict.update(dict(road_min_cons=road_min_cons, road_max_cons=road_max_cons))
 
         if self.use_yaw:
             yaw_min_cons = self.yaw_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             yaw_max_cons = self.yaw_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             cost_dict.update(dict(yaw_min_cons=yaw_min_cons, yaw_max_cons=yaw_max_cons))
         
         if self.use_delta:
             delta_min_cons = self.delta_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             delta_max_cons = self.delta_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             cost_dict.update(dict(delta_min_cons=delta_min_cons, delta_max_cons=delta_max_cons))
 
         if self.use_vel:
             vel_min_cons = self.vel_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             )
             cost_dict.update(dict(vel_min_cons=vel_min_cons))
 
@@ -584,43 +581,45 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
         """
         cost = 0
 
+        state_offset = self.plan_dyn.apply_rear_offset_correction(state)
+
         for _obs_constraint in self.obs_constraint:
             _obs_constraint: BaseMargin
-            cost += jnp.exp(-1 * self.kappa * _obs_constraint.get_stage_margin(state, ctrl))
+            cost += jnp.exp(-1 * self.kappa * _obs_constraint.get_stage_margin(state_offset, ctrl))
 
         if self.use_road:
             cost += jnp.exp(-1 * self.kappa * self.road_position_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
 
             cost += jnp.exp(-1 * self.kappa * self.road_position_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
 
         if self.use_yaw:
             cost += jnp.exp(-1 * self.kappa * self.yaw_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
             cost += jnp.exp(-1 * self.kappa * self.yaw_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
 
         if self.use_delta:
             cost += jnp.exp(-1 * self.kappa * self.delta_max_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
             cost += jnp.exp(-1 * self.kappa * self.delta_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
 
         if self.use_vel:
             cost += jnp.exp(-1 * self.kappa * self.vel_min_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
         
         if self.use_track_exit:
             cost += jnp.exp(-1 * self.kappa * self.track_exit_cost.get_stage_margin(
-                state, ctrl
+                state_offset, ctrl
             ))
 
         cost = -jnp.log(cost)/self.kappa
@@ -649,44 +648,36 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
         def roll_forward(args):
             current_state, stopping_ctrl, target_cost, v_min = args
 
+            current_state_offset = self.plan_dyn.apply_rear_offset_correction(current_state)
+
             curr_target_cost = 0
             for _obs_constraint in self.obs_constraint:
                 _obs_constraint: BaseMargin
-                curr_target_cost += jnp.exp(-1 * self.kappa * _obs_constraint.get_stage_margin(current_state, stopping_ctrl))
+                curr_target_cost += jnp.exp(-1 * self.kappa * _obs_constraint.get_stage_margin(current_state_offset, stopping_ctrl))
             
             if self.use_road:
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.road_position_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.road_position_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
             
             if self.use_yaw:
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.yaw_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.yaw_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
             if self.use_delta:
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.delta_max_cost.get_stage_margin(
-                    current_state, stopping_ctrl
+                    current_state_offset, stopping_ctrl
                 ))
                 curr_target_cost += jnp.exp(-1 * self.kappa * self.delta_min_cost.get_stage_margin(
-                    current_state, stopping_ctrl
-                ))
-
-            if self.use_vel:
-                curr_target_cost += jnp.exp(-1 * self.kappa * self.vel_min_cost.get_stage_margin(
-                    state, ctrl
-                ))
-
-            if self.use_track_exit:
-                curr_target_cost += jnp.exp(-1 * self.kappa * self.track_exit_cost.get_stage_margin(
-                    state, ctrl
+                    current_state_offset, stopping_ctrl
                 ))
 
             curr_target_cost = -jnp.log(curr_target_cost)/self.kappa
@@ -705,9 +696,9 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
 
         target_cost = jnp.inf
 
-        stopping_ctrl = jnp.array([self.plan_dyn.ctrl_space[0, 0], 0.])
+        stopping_ctrl = jnp.asarray([self.plan_dyn.ctrl_space[0, 0], 0.])
 
-        current_state = jnp.array(state)
+        current_state = jnp.asarray(state)
 
         current_state, stopping_ctrl, target_cost, v_min = jax.lax.while_loop(
             check_stopped, roll_forward, (current_state, stopping_ctrl, target_cost, self.plan_dyn.v_min))

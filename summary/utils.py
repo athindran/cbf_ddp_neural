@@ -18,7 +18,7 @@ def find_fluctuation(controls, time_delta):
     std_y_fluctuation = np.std( y_fluctuation )
     return [mean_x_fluctuation, mean_y_fluctuation, std_x_fluctuation, std_y_fluctuation]
 
-def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
+def plot_bic_run_summary(dyn_id, env, obs_history, action_history, config_solver, config_agent, 
                      fig_folder="./", **kwargs):
     c_obs = 'k'
     c_ego = 'c'
@@ -30,19 +30,19 @@ def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solv
     for ax in axes:
       # track, obstacles, footprint
       env.render_obs(ax=ax, c=c_obs)
-      env.render_footprint(ax=ax, state=state_history[0], c=c_ego)
+      env.render_footprint(ax=ax, obs=obs_history[0], c=c_ego)
       ax.axis(env.visual_extent)
       ax.set_aspect('equal')
 
     colors = {}
     colors['LR'] = 'r'
     colors['CBF'] = 'b'
-    states = np.array(state_history).T
+    obses = np.array(obs_history).T
     ctrls = np.array(action_history).T
 
     ax = axes[0]
     sc = ax.scatter(
-        states[0, :-1], states[1, :-1], s=12, c=states[2, :-1], cmap=cm.jet,
+        obses[0, :-1], obses[1, :-1], s=12, c=obses[2, :-1], cmap=cm.jet,
         vmin=0, vmax=1.5, edgecolor='none', marker='o'
     )
     cbar = fig.colorbar(sc, ax=ax)
@@ -50,7 +50,7 @@ def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solv
 
     ax = axes[1]
     sc = ax.scatter(
-        states[0, :-1], states[1, :-1], s=12, c=ctrls[1, :], cmap=cm.jet,
+        obses[0, :-1], obses[1, :-1], s=12, c=ctrls[1, :], cmap=cm.jet,
         vmin=-0.8, vmax=0.8, edgecolor='none', marker='o'
     )
     cbar = fig.colorbar(sc, ax=ax)
@@ -92,14 +92,14 @@ def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solv
         1, 2, figsize=(10.0, 2.5)
     )
     ax = axes[0]
-    ax.plot(states[2, :])
+    ax.plot(obses[2, :])
     ax.set_xlabel("Timestep")
     ax.set_ylabel("Velocity (m/s)")
     ax.grid()
     
-    if states.shape[0]>4:
+    if obses.shape[0]>4:
         ax = axes[1]
-        ax.plot(states[4, :])
+        ax.plot(obses[4, :])
         ax.set_xlabel("Timestep")
         ax.set_ylabel("Road wheel angle (rad)")
         ax.grid()
@@ -119,7 +119,7 @@ def plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solv
     fig.savefig(os.path.join(fig_folder, "auxiliary_cbfiters.png"), dpi=200)
 
 
-def plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
+def plot_pvtol_run_summary(dyn_id, env, obs_history, action_history, config_solver, config_agent, 
                      fig_folder="./", **kwargs):
     c_obs = 'k'
     c_ego = 'c'
@@ -130,24 +130,24 @@ def plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_so
 
     # track, obstacles, footprint
     env.render_obs(ax=ax, c=c_obs)
-    env.render_footprint(ax=ax, state=state_history[-3], c=c_ego)
+    env.render_footprint(ax=ax, obs=obs_history[-3], c=c_ego)
     ax.axis(env.visual_extent)
     ax.set_aspect('equal')
 
     colors = {}
     colors['LR'] = 'r'
     colors['CBF'] = 'b'
-    states = np.array(state_history).T
+    obses = np.array(obs_history).T
     ctrls = np.array(action_history).T
 
     sc = ax.scatter(
-        states[0, :-1], states[1, :-1], s=5, c='k', cmap=cm.jet,
+        obses[0, :-1], obses[1, :-1], s=5, c='k', cmap=cm.jet,
         vmin=0, vmax=1.5, edgecolor='none', marker='o'
     )
 
     # ax = axes[1]
     # sc = ax.scatter(
-    #     states[0, :-1], states[1, :-1], s=12, c=ctrls[1, :], cmap=cm.jet,
+    #     obses[0, :-1], obses[1, :-1], s=12, c=ctrls[1, :], cmap=cm.jet,
     #     vmin=-0.8, vmax=0.8, edgecolor='none', marker='o'
     # )
     fig.tight_layout()
@@ -187,13 +187,13 @@ def plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_so
         1, 2, figsize=(10.0, 2.5)
     )
     ax = axes[0]
-    ax.plot(states[2, :])
+    ax.plot(obses[2, :])
     ax.set_xlabel("Timestep")
     ax.set_ylabel("Velocity x")
     ax.grid()
     
     ax = axes[1]
-    ax.plot(states[3, :])
+    ax.plot(obses[3, :])
     ax.set_xlabel("Timestep")
     ax.set_ylabel("Velocity y")
     ax.grid()
@@ -212,21 +212,21 @@ def plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_so
     fig.savefig(os.path.join(fig_folder, "auxiliary_cbfiters.png"), dpi=200)
 
     
-def plot_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
+def plot_run_summary(dyn_id, env, obs_history, action_history, config_solver, config_agent, 
                      fig_folder="./", **kwargs):
     if dyn_id == "Bicycle5D" or dyn_id == "Bicycle4D":
-        plot_bic_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
+        plot_bic_run_summary(dyn_id, env, obs_history, action_history, config_solver, config_agent, 
                      fig_folder, **kwargs)
     elif dyn_id == "PVTOL6D":
-        plot_pvtol_run_summary(dyn_id, env, state_history, action_history, config_solver, config_agent, 
+        plot_pvtol_run_summary(dyn_id, env, obs_history, action_history, config_solver, config_agent, 
                      fig_folder, **kwargs)
     
-def make_bic_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
+def make_bic_animation_plots(env, obs_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder="./"):
     fig, ax = plt.subplots(
         1, 1, figsize=(config_solver.FIG_SIZE_X, config_solver.FIG_SIZE_Y)
     )
-    states = np.array(state_history).T
+    obses = np.array(obs_history).T
 
     ax.axis(env.visual_extent)
     ax.set_aspect('equal')
@@ -253,11 +253,11 @@ def make_bic_animation_plots(env, state_history, solver_info, safety_plan, confi
     env.render_obs(ax=ax, c=c_obs)
 
     if solver_info['mark_complete_filter']:
-        env.render_footprint(ax=ax, state=state_history[-1], c='r', lw=0.5)
+        env.render_footprint(ax=ax, obs=obs_history[-1], c='r', lw=0.5)
     elif solver_info['mark_barrier_filter']:
-        env.render_footprint(ax=ax, state=state_history[-1], c='b', lw=0.5)
+        env.render_footprint(ax=ax, obs=obs_history[-1], c='b', lw=0.5)
     else:    
-        env.render_footprint(ax=ax, state=state_history[-1], c=c_ego, lw=0.5)
+        env.render_footprint(ax=ax, obs=obs_history[-1], c=c_ego, lw=0.5)
 
     # plan.
     if safety_plan is not None:
@@ -268,7 +268,7 @@ def make_bic_animation_plots(env, state_history, solver_info, safety_plan, confi
 
     # historyory.
     sc = ax.scatter(
-        states[0, :-1], states[1, :-1], s=24, c=c_trace, marker='o'
+        obses[0, :-1], obses[1, :-1], s=24, c=c_trace, marker='o'
     )
     ax.legend(fontsize=8, loc='upper left', bbox_to_anchor=(0.05, 1.18), fancybox=False)
     
@@ -278,16 +278,16 @@ def make_bic_animation_plots(env, state_history, solver_info, safety_plan, confi
     
     fig.savefig(
         os.path.join(fig_prog_folder,
-                     str(states.shape[1] - 1) + ".png"), dpi=200
+                     str(obses.shape[1] - 1) + ".png"), dpi=200
     )
     plt.close('all')
 
-def make_pvtol_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
+def make_pvtol_animation_plots(env, obs_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder="./"):
     fig, ax = plt.subplots(
         1, 1, figsize=(config_solver.FIG_SIZE_X, config_solver.FIG_SIZE_Y)
     )
-    states = np.array(state_history).T
+    obses = np.array(obs_history).T
 
     ax.axis(env.visual_extent)
     ax.set_aspect('equal')
@@ -314,11 +314,11 @@ def make_pvtol_animation_plots(env, state_history, solver_info, safety_plan, con
     env.render_obs(ax=ax, c=c_obs)
 
     if solver_info['mark_complete_filter']:
-        env.render_footprint(ax=ax, state=state_history[-1], c='r', lw=0.5)
+        env.render_footprint(ax=ax, obs=obs_history[-1], c='r', lw=0.5)
     elif solver_info['mark_barrier_filter']:
-        env.render_footprint(ax=ax, state=state_history[-1], c='b', lw=0.5)
+        env.render_footprint(ax=ax, obs=obs_history[-1], c='b', lw=0.5)
     else:    
-        env.render_footprint(ax=ax, state=state_history[-1], c=c_ego, lw=0.5)
+        env.render_footprint(ax=ax, obs=obs_history[-1], c=c_ego, lw=0.5)
 
     # plan.
     if safety_plan is not None:
@@ -329,7 +329,7 @@ def make_pvtol_animation_plots(env, state_history, solver_info, safety_plan, con
 
     # historyory.
     sc = ax.scatter(
-        states[0, :-1], states[1, :-1], s=5, c=c_trace, marker='o'
+        obses[0, :-1], obses[1, :-1], s=5, c=c_trace, marker='o'
     )
     ax.legend(fontsize=8, loc='upper left', bbox_to_anchor=(0.05, 1.18), fancybox=False)
     
@@ -339,17 +339,17 @@ def make_pvtol_animation_plots(env, state_history, solver_info, safety_plan, con
     
     fig.savefig(
         os.path.join(fig_prog_folder,
-                     str(states.shape[1] - 1) + ".png"), dpi=200
+                     str(obses.shape[1] - 1) + ".png"), dpi=200
     )
     plt.close('all')
 
-def make_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
+def make_animation_plots(env, obs_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder="./"):
     if env.agent.dyn.id == "Bicycle4D" or env.agent.dyn.id == "Bicycle5D":
-        make_bic_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
+        make_bic_animation_plots(env, obs_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder)
     elif env.agent.dyn.id == "PVTOL6D":
-        make_pvtol_animation_plots(env, state_history, solver_info, safety_plan, config_solver, 
+        make_pvtol_animation_plots(env, obs_history, solver_info, safety_plan, config_solver, 
                          fig_prog_folder)
 
 
@@ -421,14 +421,14 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                 else:
                     showcontrollist.append(False)
 
-    plot_states_list = []
+    plot_obses_list = []
     plot_actions_list = []
     plot_safety_metrics_list = []
     plot_values_list = []
     plot_times_list = []
     plot_deviations_list = []
-    plot_states_complete_filter_list = []
-    plot_states_barrier_filter_list = []
+    plot_obses_complete_filter_list = []
+    plot_obses_barrier_filter_list = []
     plot_safe_opt_list = []
     plot_task_ctrl_list = []
 
@@ -438,9 +438,9 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
         print(prefix, suffix)
         plot_data = np.load(prefix+"/"+suffix+"/figure/save_data.npy", allow_pickle=True)
         plot_data = plot_data.ravel()[0]
-        plot_states_complete_filter_list.append( np.array(plot_data['complete_indices'] ) )
-        plot_states_barrier_filter_list.append( np.array(plot_data['barrier_indices'] ) )
-        plot_states_list.append( np.array(plot_data['states'] ) )
+        plot_obses_complete_filter_list.append( np.array(plot_data['complete_indices'] ) )
+        plot_obses_barrier_filter_list.append( np.array(plot_data['barrier_indices'] ) )
+        plot_obses_list.append( np.array(plot_data['obses'] ) )
         plot_actions_list.append( np.array(plot_data['actions']) )
         plot_values_list.append( np.array(plot_data['values']) )
         plot_safety_metrics_list.append( np.array(plot_data['safety_metrics']) )
@@ -488,45 +488,45 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
 
         lgd_c = True
         lgd_b = True
-        for idx, state_data in enumerate(plot_states_list):
+        for idx, obs_data in enumerate(plot_obses_list):
             if showlist[idx]:
                 sc = ax.plot(
-                    state_data[:, 0], state_data[:, 1], c=colorlist[int(idx)], alpha = 1.0, 
+                    obs_data[:, 0], obs_data[:, 1], c=colorlist[int(idx)], alpha = 1.0, 
                     label=labellist[int(idx)], linewidth=1.5, linestyle=stylelist[int(idx)]
                 )
 
-                complete_filter_indices = plot_states_complete_filter_list[idx]
-                barrier_filter_indices = plot_states_barrier_filter_list[idx]
+                complete_filter_indices = plot_obses_complete_filter_list[idx]
+                barrier_filter_indices = plot_obses_barrier_filter_list[idx]
                 if len(complete_filter_indices)>0:
                     if lgd_c:
                         if not hide_label:
-                            ax.plot(state_data[complete_filter_indices, 0], 
-                                    state_data[complete_filter_indices, 1], 'o', 
+                            ax.plot(obs_data[complete_filter_indices, 0], 
+                                    obs_data[complete_filter_indices, 1], 'o', 
                                     color=colorlist[int(idx)], alpha=0.7, markersize=3.0, 
                                     label='Complete filter')
                         else:
-                            ax.plot(state_data[complete_filter_indices, 0], 
-                            state_data[complete_filter_indices, 1], 'o', 
+                            ax.plot(obs_data[complete_filter_indices, 0], 
+                            obs_data[complete_filter_indices, 1], 'o', 
                             color=colorlist[int(idx)], alpha=0.7, markersize=3.0, label='                ')
                         #lgd_c = False
                     else:
-                        ax.plot(state_data[complete_filter_indices, 0], 
-                                state_data[complete_filter_indices, 1], 'o', 
+                        ax.plot(obs_data[complete_filter_indices, 0], 
+                                obs_data[complete_filter_indices, 1], 'o', 
                                 color=colorlist[int(idx)], alpha=0.7, markersize=3.0)
                 if len(barrier_filter_indices)>0:
                     if lgd_b:
                         if not hide_label:
-                            ax.plot(state_data[barrier_filter_indices, 0], 
-                                    state_data[barrier_filter_indices, 1], 'x', 
+                            ax.plot(obs_data[barrier_filter_indices, 0], 
+                                    obs_data[barrier_filter_indices, 1], 'x', 
                                     color=colorlist[int(idx)], alpha=0.7, markersize=3.0, 
                                     label=labellist[int(idx)] + ' filter')
                         else:
-                            ax.plot(state_data[barrier_filter_indices, 0], 
-                                    state_data[barrier_filter_indices, 1], 'x', 
+                            ax.plot(obs_data[barrier_filter_indices, 0], 
+                                    obs_data[barrier_filter_indices, 1], 'x', 
                                     color=colorlist[int(idx)], alpha=0.7, markersize=3.0, label='            ')
                         #lgd_b = False
                     else:
-                        ax.plot(state_data[barrier_filter_indices, 0], state_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.7, markersize=5.0)
+                        ax.plot(obs_data[barrier_filter_indices, 0], obs_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.7, markersize=5.0)
     
             ax.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
                       ncol=2, bbox_to_anchor=(-0.05, 1.35), fancybox=False, shadow=False)
@@ -571,7 +571,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                 maxsteps = np.maximum(maxsteps, nsteps)
                 x_times = dt*np.arange(nsteps)
                 fillarray = np.zeros(maxsteps)
-                fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+                fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
                 axes[0].plot(x_times, controls_data[:, 0], label=labellist[int(idx)], c=colorlist[int(idx)], 
                              alpha = 1.0, linewidth=1.5, linestyle=styles[idx])
                 axes[1].plot(x_times, controls_data[:, 1], label=labellist[int(idx)], c=colorlist[int(idx)], 
@@ -641,7 +641,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                              alpha = 1.0, linewidth=1.5, linestyle='solid')
             nsteps = values_data.size
             fillarray = np.zeros(nsteps)
-            fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+            fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
             ax_v.fill_between(x_times, 0.0, max_value, 
                                      where=fillarray, color=colorlist[int(idx)], alpha=0.3)
             ax_v.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
@@ -679,7 +679,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
     #                          alpha = 1.0, linewidth=1.5, linestyle='solid')
     #         nsteps = safety_metrics_data.size
     #         fillarray = np.zeros(nsteps)
-    #         fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+    #         fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
     #         ax_sf.fill_between(x_times, 0.0, max_value, 
     #                                  where=fillarray, color=colorlist[int(idx)], alpha=0.3)
     #         ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
@@ -720,7 +720,7 @@ def make_yaw_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./
                             alpha = 1.0, linewidth=1.5, linestyle='solid')
         nsteps = process_times_data.size
         fillarray = np.zeros(nsteps)
-        fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+        fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
         ax_st.fill_between(x_times, 0.0, max_value, 
                                     where=fillarray, color=colorlist[int(idx)], alpha=0.3)
 
@@ -801,14 +801,14 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
         showlist.append(True)
         showcontrollist.append(True)
 
-    plot_states_list = []
+    plot_obses_list = []
     plot_actions_list = []
     plot_safety_metrics_list = []
     plot_values_list = []
     plot_times_list = []
     plot_deviations_list = []
-    plot_states_complete_filter_list = []
-    plot_states_barrier_filter_list = []
+    plot_obses_complete_filter_list = []
+    plot_obses_barrier_filter_list = []
     plot_safe_opt_list = []
     plot_task_ctrl_list = []
 
@@ -818,9 +818,9 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
         print(prefix, suffix)
         plot_data = np.load(prefix+"/"+suffix+"/figure/save_data.npy", allow_pickle=True)
         plot_data = plot_data.ravel()[0]
-        plot_states_complete_filter_list.append( np.array(plot_data['complete_indices'] ) )
-        plot_states_barrier_filter_list.append( np.array(plot_data['barrier_indices'] ) )
-        plot_states_list.append( np.array(plot_data['states'] ) )
+        plot_obses_complete_filter_list.append( np.array(plot_data['complete_indices'] ) )
+        plot_obses_barrier_filter_list.append( np.array(plot_data['barrier_indices'] ) )
+        plot_obses_list.append( np.array(plot_data['obses'] ) )
         plot_actions_list.append( np.array(plot_data['actions']) )
         plot_values_list.append( np.array(plot_data['values']) )
         plot_safety_metrics_list.append( np.array(plot_data['safety_metrics']) )
@@ -871,45 +871,45 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
 
         lgd_c = True
         lgd_b = True
-        for idx, state_data in enumerate(plot_states_list):
+        for idx, obs_data in enumerate(plot_obses_list):
             if showlist[idx]:
                 sc = ax.plot(
-                    state_data[:, 0], state_data[:, 1], c=colorlist[int(idx)], alpha = 1.0, 
+                    obs_data[:, 0], obs_data[:, 1], c=colorlist[int(idx)], alpha = 1.0, 
                     label=labellist[int(idx)], linewidth=1.5, linestyle=stylelist[int(idx)]
                 )
 
-                complete_filter_indices = plot_states_complete_filter_list[idx]
-                barrier_filter_indices = plot_states_barrier_filter_list[idx]
+                complete_filter_indices = plot_obses_complete_filter_list[idx]
+                barrier_filter_indices = plot_obses_barrier_filter_list[idx]
                 if len(complete_filter_indices)>0:
                     if lgd_c:
                         if not hide_label:
-                            ax.plot(state_data[complete_filter_indices, 0], 
-                                    state_data[complete_filter_indices, 1], 'o', 
+                            ax.plot(obs_data[complete_filter_indices, 0], 
+                                    obs_data[complete_filter_indices, 1], 'o', 
                                     color=colorlist[int(idx)], alpha=0.7, markersize=3.0, 
                                     label='Complete filter')
                         else:
-                            ax.plot(state_data[complete_filter_indices, 0], 
-                            state_data[complete_filter_indices, 1], 'o', 
+                            ax.plot(obs_data[complete_filter_indices, 0], 
+                            obs_data[complete_filter_indices, 1], 'o', 
                             color=colorlist[int(idx)], alpha=0.7, markersize=3.0, label='                ')
                         #lgd_c = False
                     else:
-                        ax.plot(state_data[complete_filter_indices, 0], 
-                                state_data[complete_filter_indices, 1], 'o', 
+                        ax.plot(obs_data[complete_filter_indices, 0], 
+                                obs_data[complete_filter_indices, 1], 'o', 
                                 color=colorlist[int(idx)], alpha=0.7, markersize=3.0)
                 if len(barrier_filter_indices)>0:
                     if lgd_b:
                         if not hide_label:
-                            ax.plot(state_data[barrier_filter_indices, 0], 
-                                    state_data[barrier_filter_indices, 1], 'x', 
+                            ax.plot(obs_data[barrier_filter_indices, 0], 
+                                    obs_data[barrier_filter_indices, 1], 'x', 
                                     color=colorlist[int(idx)], alpha=0.7, markersize=3.0, 
                                     label=labellist[int(idx)] + ' filter')
                         else:
-                            ax.plot(state_data[barrier_filter_indices, 0], 
-                                    state_data[barrier_filter_indices, 1], 'x', 
+                            ax.plot(obs_data[barrier_filter_indices, 0], 
+                                    obs_data[barrier_filter_indices, 1], 'x', 
                                     color=colorlist[int(idx)], alpha=0.7, markersize=3.0, label='            ')
                         #lgd_b = False
                     else:
-                        ax.plot(state_data[barrier_filter_indices, 0], state_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.7, markersize=5.0)
+                        ax.plot(obs_data[barrier_filter_indices, 0], obs_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.7, markersize=5.0)
     
             ax.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
                       ncol=2, bbox_to_anchor=(-0.05, 1.35), fancybox=False, shadow=False)
@@ -952,7 +952,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                 maxsteps = np.maximum(maxsteps, nsteps)
                 x_times = dt*np.arange(nsteps)
                 fillarray = np.zeros(maxsteps)
-                fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+                fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
                 axes[0].plot(x_times, controls_data[:, 0], label=labellist[int(idx)], c=colorlist[int(idx)], 
                              alpha = 1.0, linewidth=1.5, linestyle=styles[idx])
                 axes[1].plot(x_times, controls_data[:, 1], label=labellist[int(idx)], c=colorlist[int(idx)], 
@@ -1022,7 +1022,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                              alpha = 1.0, linewidth=1.5, linestyle='solid')
             nsteps = values_data.size
             fillarray = np.zeros(nsteps)
-            fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+            fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
             ax_v.fill_between(x_times, 0.0, max_value, 
                                      where=fillarray, color=colorlist[int(idx)], alpha=0.3)
             ax_v.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
@@ -1060,7 +1060,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     #                          alpha = 1.0, linewidth=1.5, linestyle='solid')
     #         nsteps = safety_metrics_data.size
     #         fillarray = np.zeros(nsteps)
-    #         fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+    #         fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
     #         ax_sf.fill_between(x_times, 0.0, max_value, 
     #                                  where=fillarray, color=colorlist[int(idx)], alpha=0.3)
     #         ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
@@ -1101,7 +1101,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                             alpha = 1.0, linewidth=1.5, linestyle='solid')
         nsteps = process_times_data.size
         fillarray = np.zeros(nsteps)
-        fillarray[np.array(plot_states_barrier_filter_list[idx], dtype=np.int64)] = 1
+        fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
         ax_st.fill_between(x_times, 0.0, max_value, 
                                     where=fillarray, color=colorlist[int(idx)], alpha=0.3)
 

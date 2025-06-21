@@ -54,8 +54,8 @@ cost:
   USE_ROAD: true
   COST_TYPE: Reachavoid
   # SAFETY COST PARAM
-  W_ACCEL: 0.05
-  W_OMEGA: 0.05
+  W_ACCEL: 0.1
+  W_OMEGA: 0.1
   YAW_MIN: -1.57
   YAW_MAX: 1.57
   SMOOTHING_TEMP: 2.0
@@ -78,7 +78,7 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.1, 3.0, 0.05, 0.0]
+  INIT_STATE: [-0.3, 0.1, 3.0, 0.05, 0.0]
   N: 50
   MAX_ITER: 20
   MAX_ITER_RECEDING: 1500

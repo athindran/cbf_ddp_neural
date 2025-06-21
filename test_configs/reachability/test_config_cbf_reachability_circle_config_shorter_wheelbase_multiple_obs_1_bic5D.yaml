@@ -60,7 +60,7 @@ agent:
   AGENT_ID: ego
   DYN: Bicycle4D
   FOOTPRINT: Circle
-  EGO_RADIUS: 0.2
+  EGO_RADIUS: 0.3
   ACTION_RANGE:
     - [-1.5, 1.5]
     - [-3.0, 3.0]
@@ -74,7 +74,7 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.0, 2.0, 0.05]
+  INIT_STATE: [-0.3, 0.0, 2.0, 0.05]
   N: 50
   MAX_ITER: 20
   MAX_ITER_RECEDING: 800

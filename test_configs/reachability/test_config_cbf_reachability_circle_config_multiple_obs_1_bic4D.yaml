@@ -77,7 +77,7 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.0, 2.0, 0.05]
+  INIT_STATE: [-0.4, 0.0, 2.0, 0.05]
   N: 50
   MAX_ITER: 20
   MAX_ITER_RECEDING: 1500

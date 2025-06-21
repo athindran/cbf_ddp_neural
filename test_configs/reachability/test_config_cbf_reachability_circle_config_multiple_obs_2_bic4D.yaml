@@ -13,8 +13,8 @@ environment:
     - [4.1, 1.5, 0.6]
     - [4.1, 1.4, 0.4]
     - [4.5, -1.8, 0.6]
-    - [10.5, 0.4, 0.6]
-    - [10.5, -0.4, 0.6]
+    - [10.5, 0.35, 0.6]
+    - [10.5, -0.35, 0.6]
   RESET_SPACE:
     - [0., 8.0]
     - [-2.4, 2.4]
@@ -49,8 +49,8 @@ cost:
   USE_ROAD: true
   COST_TYPE: Reachability
   # SAFETY COST PARAM
-  W_ACCEL: 0.05
-  W_OMEGA: 0.05
+  W_ACCEL: 0.1
+  W_OMEGA: 0.1
   YAW_MIN: -1.57
   YAW_MAX: 1.57
   SMOOTHING_TEMP: 2.0
@@ -73,7 +73,7 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.0, 2.0, 0.05]
+  INIT_STATE: [-0.4, 0.0, 2.0, 0.05]
   N: 50
   MAX_ITER: 20
   MAX_ITER_RECEDING: 1500

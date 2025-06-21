@@ -116,17 +116,17 @@ def main(config_file, filter_type, is_task_ilqr):
     def rollout_step_callback(
             env,
             state_history,
+            obs_history,
             action_history,
             plan_history,
             step_history,
             *args,
             **kwargs):
         solver_info = plan_history[-1]
-        states = np.array(state_history).T  # last one is the next state.
-        curr_state = states[-1]
+        obses = np.array(obs_history).T  # last one is the next state.
         make_animation_plots(
             env,
-            state_history,
+            obs_history,
             solver_info,
             kwargs['safety_plan'],
             config_solver,
@@ -135,7 +135,7 @@ def main(config_file, filter_type, is_task_ilqr):
         if config_solver.FILTER_TYPE == "none":
             print(
                 "[{}]: solver returns status {}, cost {:.1e}, and uses {:.3f}.".format(
-                    states.shape[1] - 1,
+                    obses.shape[1] - 1,
                     solver_info['status'],
                     solver_info['Vopt'],
                     solver_info['t_process']),
@@ -143,7 +143,7 @@ def main(config_file, filter_type, is_task_ilqr):
         else:
             print(
                 "[{}]: solver returns status {}, margin {:.1e}, future margin {:.1e}, and uses {:.3f}.".format(
-                    states.shape[1] - 1,
+                    obses.shape[1] - 1,
                     solver_info['status'],
                     solver_info['marginopt'],
                     solver_info['marginopt_next'],
@@ -153,6 +153,7 @@ def main(config_file, filter_type, is_task_ilqr):
     def rollout_episode_callback(
             env,
             state_history,
+            obs_history,
             action_history,
             plan_history,
             step_history,
@@ -161,7 +162,7 @@ def main(config_file, filter_type, is_task_ilqr):
         plot_run_summary(
             config_agent.DYN,
             env,
-            state_history,
+            obs_history,
             action_history,
             config_solver,
             config_agent,
@@ -169,6 +170,7 @@ def main(config_file, filter_type, is_task_ilqr):
             **kwargs)
         save_dict = {
             'states': state_history,
+            'obses': obs_history,
             'actions': action_history,
             "values": kwargs["value_history"],
             "process_times": kwargs["process_time_history"],

@@ -208,6 +208,7 @@ class BaseSingleEnv(BaseEnv):
         result = 0
         obs = self.reset(**reset_kwargs)
         state_history.append(self.state)
+        obs_history.append(obs)
 
         prev_sol = None
         prev_ctrl = np.array([0.0, 0.0])
@@ -242,7 +243,7 @@ class BaseSingleEnv(BaseEnv):
             deviation_history.append(solver_info['deviation'])
             safe_opt_history.append(solver_info['safe_opt_ctrl'])
             task_ctrl_history.append(solver_info['task_ctrl'])
-            safety_metric_history.append(self.cost.constraint.get_safety_metric(obs, action))
+            safety_metric_history.append(self.cost.constraint.get_safety_metric(self.state, action))
 
             if advanced_animate:
                 if self.cost_type=="Reachability":
@@ -281,7 +282,7 @@ class BaseSingleEnv(BaseEnv):
 
             if rollout_step_callback is not None:
                 rollout_step_callback(
-                    self, state_history, action_history, plan_history, step_history, safety_plan=safety_plan
+                    self, state_history, obs_history, action_history, plan_history, step_history, safety_plan=safety_plan
                 )
 
             # Checks termination criterion.
@@ -296,7 +297,7 @@ class BaseSingleEnv(BaseEnv):
 
         if rollout_episode_callback is not None:
             rollout_episode_callback(
-                self, state_history, action_history, plan_history, step_history, value_history=value_history, process_time_history=process_time_history,
+                self, state_history, obs_history, action_history, plan_history, step_history, value_history=value_history, process_time_history=process_time_history,
                 solver_iters_history=solver_iters_history, deviation_history=deviation_history, safety_metric_history=safety_metric_history,
                 safe_opt_history=safe_opt_history, task_ctrl_history=task_ctrl_history,
                 barrier_filter_indices=barrier_filter_indices, complete_filter_indices=complete_filter_indices,

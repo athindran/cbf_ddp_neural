@@ -55,7 +55,7 @@ cost:
   W_OMEGA: 0.05
   YAW_MIN: -1.57
   YAW_MAX: 1.57
-  SMOOTHING_TEMP: 3.0
+  SMOOTHING_TEMP: 2.5
 
 agent:
   AGENT_ID: ego
@@ -75,7 +75,7 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.0, 2.5, 0.05, 0.0]
+  INIT_STATE: [-0.35, 0.0, 2.5, 0.05, 0.0]
   N: 50
   MAX_ITER: 20
   MAX_ITER_RECEDING: 900

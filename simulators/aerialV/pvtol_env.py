@@ -177,19 +177,19 @@ class Pvtol6DEnv(BaseSingleEnv):
         """
         if ax is None:
             ax = plt.gca()
-        self.render_footprint(ax=ax, state=self.state, c=c_ego)
+        self.render_footprint(ax=ax, obs=obs, c=c_ego)
         self.render_obs(ax=ax, c=c_obs)
         ax.axis(self.visual_extent)
         ax.set_aspect('equal')
 
     def render_footprint(
-        self, ax, state: np.ndarray, c: str = 'b', s: float = 12,
+        self, ax, obs: np.ndarray, c: str = 'b', s: float = 12,
         lw: float = 1.5, alpha: float = 1.
     ):
-        ax.scatter(state[0], state[1], c=c, s=s)
+        ax.scatter(obs[0], obs[1], c=c, s=s)
         ego = self.agent.footprint
-        ego.set_center(state[0:2])
-        ego.set_angle(state[2]*180.0/np.pi)
+        ego.set_center(obs[0:2])
+        ego.set_angle(np.rad2deg(obs[2]))
         ego.plot(ax, color=c, lw=lw, alpha=alpha)
 
     def render_obs(self, ax, c: str = 'r'):

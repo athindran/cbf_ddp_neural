@@ -296,7 +296,10 @@ class CarSingle5DEnv(BaseSingleEnv):
                 sin theta to represent yaw.
         """
         assert state.shape[0] == self.state_dim, ("State shape is incorrect!")
-        return state
+        if state.ndim==1:
+            state = state[:, np.newaxis]
+        state_offset = np.asarray(self.agent.dyn.get_batched_rear_offset_correction(jnp.asarray(state)).squeeze())
+        return state_offset
 
     def get_samples(self, nx: int, ny: int) -> Tuple[np.ndarray, np.ndarray]:
         """Gets state samples for value function plotting.
@@ -342,12 +345,12 @@ class CarSingle5DEnv(BaseSingleEnv):
         ax.set_aspect('equal')
 
     def render_footprint(
-        self, ax, state: np.ndarray, c: str = 'b', s: float = 12,
+        self, ax, obs: np.ndarray, c: str = 'b', s: float = 12,
         lw: float = 1.5, alpha: float = 1.
     ):
-        ax.scatter(state[0], state[1], c=c, s=s)
+        ax.scatter(obs[0], obs[1], c=c, s=s)
         ego = self.agent.footprint
-        ego.set_center(state[0:2])
+        ego.set_center(obs[0:2])
         ego.plot(ax, color=c, lw=lw, alpha=alpha)
 
     def render_obs(self, ax, c: str = 'r'):

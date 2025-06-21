@@ -57,7 +57,7 @@ cost:
   W_OMEGA: 0.1
   YAW_MIN: -1.57
   YAW_MAX: 1.57
-  SMOOTHING_TEMP: 2.0
+  SMOOTHING_TEMP: 2.5
 
 agent:
   AGENT_ID: ego
@@ -77,7 +77,7 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.0, 2.0, 0.05]
+  INIT_STATE: [-0.3, 0.0, 2.0, 0.05]
   N: 50
   MAX_ITER: 20
   MAX_ITER_RECEDING: 1500
@@ -88,7 +88,7 @@ solver:
   FILTER_TYPE: 'CBF'
   CONSTRAINT_TYPE: 'quadratic'
   CBF_GAMMA: 0.99
-  SOFT_CBF_GAMMA: 0.98
+  SOFT_CBF_GAMMA: 0.99
   LR_THRESHOLD: 0.0
   OUT_FOLDER: exps/ilqr/bic4D/reachavoid_experiment_mulobs_config1/
   DEVICE: cpu
