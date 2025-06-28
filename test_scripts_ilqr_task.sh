@@ -1,4 +1,6 @@
-# Paper scripts
+# Test scripts
+
+# Run each config independently for best performance in process time.
 
 # Reachability
 python evaluate_soft_ddpcbf.py -cf ./test_configs/reachability/test_config_cbf_reachability_circle_config_multiple_obs_1_bic4D.yaml -rb 2.5 -ls 'baseline'
