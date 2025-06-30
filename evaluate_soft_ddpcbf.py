@@ -1,6 +1,6 @@
 from summary.utils import(
     make_animation_plots,
-    make_yaw_report,
+    make_bicycle_comparison_report,
     plot_run_summary)
 from simulators import(
     load_config,
@@ -37,31 +37,36 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
             *args,
             **kwargs):
         solver_info = plan_history[-1]
-        states = np.array(state_history).T  # last one is the next state.
+        states = np.asarray(state_history).T  # last one is the next state.
+        action_history = np.asarray(action_history)
         make_animation_plots(
             env,
             obs_history,
+            action_history,
             solver_info,
             kwargs['safety_plan'],
             config_solver,
+            config_agent,
+            np.asarray(kwargs['barrier_filter_indices']),
+            np.asarray(kwargs['complete_filter_indices']),
             fig_prog_folder)
 
-        if config_solver.FILTER_TYPE == "none":
-            print(
-                "[{}]: solver returns status {}, cost {:.1e}, and uses {:.3f}.".format(
-                    states.shape[1] - 1,
-                    solver_info['status'],
-                    solver_info['Vopt'],
-                    solver_info['t_process']),
-                end=' -> ')
-        else:
-            print(
-                "[{}]: solver returns status {}, margin {:.1e}, future margin {:.1e}, and uses {:.3f}.".format(
-                    states.shape[1] - 1,
-                    solver_info['status'],
-                    solver_info['marginopt'],
-                    solver_info['marginopt_next'],
-                    solver_info['process_time']))
+        # if config_solver.FILTER_TYPE == "none":
+        #     print(
+        #         "[{}]: solver returns status {}, cost {:.1e}, and uses {:.3f}.".format(
+        #             states.shape[1] - 1,
+        #             solver_info['status'],
+        #             solver_info['Vopt'],
+        #             solver_info['t_process']),
+        #         end=' -> ')
+        # else:
+        #     print(
+        #         "[{}]: solver returns status {}, margin {:.1e}, future margin {:.1e}, and uses {:.3f}.".format(
+        #             states.shape[1] - 1,
+        #             solver_info['status'],
+        #             solver_info['marginopt'],
+        #             solver_info['marginopt_next'],
+        #             solver_info['process_time']))
     
     # Callback after episode for plotting and summarizing evaluation
     def rollout_episode_callback(
@@ -204,7 +209,7 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
 
     yaw_constraint = None
     print(f"Road boundary: {road_boundary}")
-    print(f"Yaw constraint: {yaw_constraint}", )
+    print(f"Line searcg: {line_search}", )
     print(f"Filter type: {filter_type}" )
 
     # if yaw_constraint is not None:
@@ -255,11 +260,13 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
     # Warms up jit again
     env.agent.get_action(obs=x_cur, state=x_cur, warmup=True)
 
+    should_animate = False
     nominal_states, result, traj_info = env.simulate_one_trajectory(
         T_rollout=max_iter_receding, end_criterion=end_criterion,
         reset_kwargs=dict(state=x_cur),
         rollout_step_callback=rollout_step_callback,
         rollout_episode_callback=rollout_episode_callback,
+        advanced_animate=should_animate,
     )
 
     print("result:", result)
@@ -270,19 +277,20 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
 
     # endregion
 
-    # region: Visualizes
-    gif_path = os.path.join(fig_folder, 'rollout.gif')
-    frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
-    with imageio.get_writer(gif_path, mode='I') as writer:
-        for i in range(len(nominal_states) - 1):
-            if frame_skip != 1 and (i + 1) % frame_skip != 0:
-                continue
-            filename = os.path.join(
-                fig_prog_folder, str(i + 1) + ".png")
-            image = imageio.imread(filename)
-            writer.append_data(image)
-            #Image(open(gif_path, 'rb').read(), width=400)
-    # endregion
+    if should_animate:
+        # region: Visualizes
+        gif_path = os.path.join(fig_folder, 'rollout.gif')
+        frame_skip = getattr(config_solver, "FRAME_SKIP", 10)
+        with imageio.get_writer(gif_path, mode='I') as writer:
+            for i in range(len(nominal_states) - 1):
+                if frame_skip != 1 and (i + 1) % frame_skip != 0:
+                    continue
+                filename = os.path.join(
+                    fig_prog_folder, str(i + 1) + ".png")
+                image = imageio.imread(filename)
+                writer.append_data(image)
+                #Image(open(gif_path, 'rb').read(), width=400)
+        # endregion
 
     return out_folder, plot_tag, config_agent
 
@@ -323,7 +331,7 @@ if __name__ == "__main__":
         out_folder, plot_tag, config_agent = main(args.config_file, args.road_boundary, filter_type=filter_type, is_task_ilqr=(not args.naive_task),         
                                                     line_search=args.line_search)
 
-    make_yaw_report(
+    make_bicycle_comparison_report(
         out_folder,
         plot_folder='./plots_summary_' + args.line_search + '/',
         tag=plot_tag + "_" + str(args.road_boundary,),

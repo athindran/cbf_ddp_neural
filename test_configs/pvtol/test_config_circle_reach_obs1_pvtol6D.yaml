@@ -63,13 +63,13 @@ solver:
   LINE_SEARCH: 'baseline'
   # Filter options: 'none', 'LR', 'CBF'
   FILTER_TYPE: 'SoftCBF'
-  CONSTRAINT_TYPE: 'quadratic'
+  CONSTRAINT_TYPE: 'linear'
   CBF_GAMMA: 0.99
   SOFT_CBF_GAMMA: 0.99
   LR_THRESHOLD: 0.0
   OUT_FOLDER: exps/ilqr/pvtol6D/reachability_experiment_mulobs_config1/
   DEVICE: cpu
   # options: 'ILQR', 'DDP'.
-  ORDER: 'ILQR'
+  ORDER: 'DDP'
   FIG_SIZE_X: 5.0
   FIG_SIZE_Y: 5.0

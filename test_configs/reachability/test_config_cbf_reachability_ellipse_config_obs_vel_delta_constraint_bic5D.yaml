@@ -79,7 +79,7 @@ solver:
   INIT_STATE: [-0.4, 0.0, 2.5, 0.05, 0.0]
   N: 50
   MAX_ITER: 20
-  MAX_ITER_RECEDING: 1200
+  MAX_ITER_RECEDING: 800
   # Line search options: 'baseline'.
   # Baseline seems to be good enough for most cases.
   LINE_SEARCH: 'baseline'
@@ -87,11 +87,11 @@ solver:
   FILTER_TYPE: 'CBF'
   CONSTRAINT_TYPE: 'quadratic'
   CBF_GAMMA: 0.98
-  SOFT_CBF_GAMMA: 0.98
+  SOFT_CBF_GAMMA: 0.985
   LR_THRESHOLD: 0.0
   OUT_FOLDER: exps/ilqr/bic5D/reachability_experiment_vel_delta_constraint_mulobs_ellipse_config1/
   DEVICE: cpu
   # options: 'ILQR', 'DDP'.
   ORDER: 'DDP'
-  FIG_SIZE_X: 8
-  FIG_SIZE_Y: 2.0
+  FIG_SIZE_X: 6.0
+  FIG_SIZE_Y: 5.0

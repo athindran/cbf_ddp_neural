@@ -247,7 +247,7 @@ class BaseSingleEnv(BaseEnv):
 
             if advanced_animate:
                 if self.cost_type=="Reachability":
-                    safety_plan = solver_info['states']
+                    safety_plan = np.asarray(solver_info['states'])
                 elif self.cost_type=="Reachavoid":
                     # We plot the safety plan where we enter the target set, then
                     # decelerate and stop to remain safe for infinite time for an
@@ -277,13 +277,13 @@ class BaseSingleEnv(BaseEnv):
 
                     safety_plan = np.concatenate(
                     (target_plan, np.array(stopping_plan).T), axis=1)
+                if rollout_step_callback is not None:
+                    rollout_step_callback(
+                        self, state_history, obs_history, action_history, plan_history, step_history, safety_plan=safety_plan, 
+                                barrier_filter_indices=barrier_filter_indices, complete_filter_indices=complete_filter_indices,
+                    )
             else:
-                safety_plan = None
-
-            if rollout_step_callback is not None:
-                rollout_step_callback(
-                    self, state_history, obs_history, action_history, plan_history, step_history, safety_plan=safety_plan
-                )
+                safety_plan = np.asarray(solver_info['states'])
 
             # Checks termination criterion.
             if done:
