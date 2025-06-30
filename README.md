@@ -2,6 +2,12 @@
 
 This is a repository for using CBF-DDP with soft minimum and maximum operators in place of the hard operators that were originally used. All changes are contained in the main branch. For public release, the code will go through another iteration of cleaning.
 
+<img src="./videos/bic5d_reachability_softddpcbf.gif" width="60" height="50" />
+
+<img src="./videos/bic5d_reachavoid_softddpcbf.gif" width="60" height="50" />
+
+<img src="./videos/pvtol_softddpcbf.gif" width="40" height="40" />
+
 TODO:
 
 - Rename 'jerk' to 'action_fluctuation' - Done
