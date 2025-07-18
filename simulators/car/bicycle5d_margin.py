@@ -505,7 +505,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
     def get_safety_metric(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
-        return self.get_target_stage_margin(state, ctrl)
+        return self.get_stage_margin(state, ctrl)
 
     @partial(jax.jit, static_argnames='self')
     def get_cost_dict(
@@ -625,12 +625,6 @@ class Bicycle5DSoftConstraintMargin(Bicycle5DConstraintMargin):
         cost = -jnp.log(cost)/self.kappa
 
         return cost
-
-    @partial(jax.jit, static_argnames='self')
-    def get_safety_metric(
-        self, state: DeviceArray, ctrl: DeviceArray
-    ) -> DeviceArray:
-        return self.get_target_stage_margin(state, ctrl)
 
     @partial(jax.jit, static_argnames='self')
     def get_target_stage_margin(

@@ -520,7 +520,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
         c_obs = 'k'
         env = CarSingle5DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(7.5, 5.5))
+        fig = plt.figure(layout='constrained', figsize=(7.7, 6.5))
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
@@ -676,12 +676,12 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     subfigs_col2 = subfigs[1].subfigures(2, 1)
     ax_v = subfigs_col2[0].subplots(1, 1)
     max_value = 1.8
-    for idx, values_data in enumerate(plot_values_list):
+    for idx, safety_metrics_data in enumerate(plot_safety_metrics_list):
         if showcontrollist[idx]:
-            x_times = dt*np.arange(values_data.size)
-            ax_v.plot(x_times, values_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
+            x_times = dt*np.arange(safety_metrics_data.size)
+            ax_v.plot(x_times, safety_metrics_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
                              alpha = 1.0, linewidth=1.5, linestyle='solid')
-            nsteps = values_data.size
+            nsteps = safety_metrics_data.size
             fillarray = np.zeros(nsteps)
             fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
             ax_v.fill_between(x_times, 0.0, max_value, 
@@ -697,7 +697,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     ax_v.xaxis.set_label_coords(0.5, -0.04)
     ax_v.set_xlabel('Time (s)', 
                         fontsize=legend_fontsize)
-    ax_v.set_ylabel('Value function', 
+    ax_v.set_ylabel('Constraint Margin', 
                         fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
@@ -1056,12 +1056,12 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     subfigs_col2 = subfigs[1].subfigures(2, 1)
     ax_v = subfigs_col2[0].subplots(1, 1)
     max_value = 3.0
-    for idx, values_data in enumerate(plot_values_list):
+    for idx, safety_metrics_data in enumerate(plot_safety_metrics_list):
         if showcontrollist[idx]:
-            x_times = dt*np.arange(values_data.size)
-            ax_v.plot(x_times, values_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
+            x_times = dt*np.arange(safety_metrics_data.size)
+            ax_v.plot(x_times, safety_metrics_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
                              alpha = 1.0, linewidth=1.5, linestyle='solid')
-            nsteps = values_data.size
+            nsteps = safety_metrics_data.size
             fillarray = np.zeros(nsteps)
             fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
             ax_v.fill_between(x_times, 0.0, max_value, 
@@ -1077,7 +1077,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     ax_v.xaxis.set_label_coords(0.5, -0.04)
     ax_v.set_xlabel('Time (s)', 
                         fontsize=legend_fontsize)
-    ax_v.set_ylabel('Value function', 
+    ax_v.set_ylabel('Constraint Margin', 
                         fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
