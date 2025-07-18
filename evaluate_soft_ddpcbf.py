@@ -324,7 +324,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    filters=['SoftLR', 'CBF', 'SoftCBF']
+    filters=['CBF', 'SoftCBF']
     
     out_folder, plot_tag, config_agent = None, None, None
     for filter_type in filters:

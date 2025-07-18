@@ -405,7 +405,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
 
     hide_label = False
 
-    legend_fontsize = 9
+    legend_fontsize = 7.5
     road_bounds = [road_boundary]
     yaw_consts = [None]
     label_yc = [None]
@@ -520,7 +520,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
         c_obs = 'k'
         env = CarSingle5DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(7.7, 6.5))
+        fig = plt.figure(layout='constrained', figsize=(5.7, 4.2))
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
@@ -589,8 +589,8 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
             ax.plot(np.linspace(0, env.visual_extent[1], 100), np.array([rblist[idx]]*100), 'k--')
             ax.plot(np.linspace(0, env.visual_extent[1], 100), np.array([-1*rblist[idx]]*100), 'k--')
             if not hide_label:
-                ax.set_xlabel('X position', fontsize=legend_fontsize)
-                ax.set_ylabel('Y position', fontsize=legend_fontsize)
+                ax.set_xlabel('X position $(m)$', fontsize=legend_fontsize)
+                ax.set_ylabel('Y position $(m)$', fontsize=legend_fontsize)
             ax.yaxis.set_label_coords(-0.03, 0.5)
             ax.xaxis.set_label_coords(0.5, -0.04)
 
@@ -634,7 +634,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
 
             if not hide_label:
                 #axes[0].set_xlabel('Time index', fontsize=legend_fontsize)
-                axes[0].set_ylabel('Acceleration', fontsize=legend_fontsize)
+                axes[0].set_ylabel(f'Accel $(m/s^2)$', fontsize=legend_fontsize)
             #axes[0].grid(True)
             axes[0].set_xticks(ticks=[], labels=[], fontsize=5, labelsize=5)
             axes[0].set_yticks(ticks=[action_space[0, 0], action_space[0, 1]], 
@@ -649,8 +649,8 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
                 axes[0].set_yticklabels([])
 
             if not hide_label:
-                axes[1].set_xlabel('Time (s)', fontsize=legend_fontsize)
-                axes[1].set_ylabel('Steer control', fontsize=legend_fontsize)
+                axes[1].set_xlabel('Time $(s)$', fontsize=legend_fontsize)
+                axes[1].set_ylabel(f'Steer $(rad/s)$', fontsize=legend_fontsize)
             #axes[1].grid(True)
             axes[1].set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
             axes[1].set_yticks(ticks=[action_space[1, 0], action_space[1, 1]], 
@@ -695,7 +695,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     ax_v.set_ylim([0.0, max_value])
     ax_v.yaxis.set_label_coords(-0.04, 0.5)
     ax_v.xaxis.set_label_coords(0.5, -0.04)
-    ax_v.set_xlabel('Time (s)', 
+    ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
     ax_v.set_ylabel('Constraint Margin', 
                         fontsize=legend_fontsize)
@@ -773,7 +773,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     ax_st.set_ylim([0.0, max_value])
     ax_st.yaxis.set_label_coords(-0.04, 0.5)
     ax_st.xaxis.set_label_coords(0.5, -0.04)
-    ax_st.set_xlabel('Time (s)', 
+    ax_st.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
     ax_st.set_ylabel('Safety filter process time (s)', 
                         fontsize=legend_fontsize)
@@ -810,7 +810,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
 
     hide_label = False
 
-    legend_fontsize = 8
+    legend_fontsize = 7.0
 
     suffixlist = []
     labellist = []
@@ -902,7 +902,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
         c_obs = 'k'
         env = Pvtol6DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(7.5, 5.8))
+        fig = plt.figure(layout='constrained', figsize=(5.7, 4.2))
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
@@ -969,8 +969,8 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                               fontsize=legend_fontsize)
 
             if not hide_label:
-                ax.set_xlabel('X position', fontsize=legend_fontsize)
-                ax.set_ylabel('Y position', fontsize=legend_fontsize)
+                ax.set_xlabel('X position $(m)$', fontsize=legend_fontsize)
+                ax.set_ylabel('Y position $(m)$', fontsize=legend_fontsize)
             ax.yaxis.set_label_coords(-0.03, 0.5)
             ax.xaxis.set_label_coords(0.5, -0.04)
 
@@ -1014,7 +1014,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
 
             if not hide_label:
                 #axes[0].set_xlabel('Time index', fontsize=legend_fontsize)
-                axes[0].set_ylabel('Thrust X', fontsize=legend_fontsize)
+                axes[0].set_ylabel('Thrust X $(N)$', fontsize=legend_fontsize)
             #axes[0].grid(True)
             axes[0].set_xticks(ticks=[], labels=[], fontsize=5, labelsize=5)
             axes[0].set_yticks(ticks=[action_space[0, 0], action_space[0, 1]], 
@@ -1029,8 +1029,8 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
                 axes[0].set_yticklabels([])
 
             if not hide_label:
-                axes[1].set_xlabel('Time (s)', fontsize=legend_fontsize)
-                axes[1].set_ylabel('Thrust Y', fontsize=legend_fontsize)
+                axes[1].set_xlabel('Time $(s)$', fontsize=legend_fontsize)
+                axes[1].set_ylabel('Thrust Y $(N)$', fontsize=legend_fontsize)
             #axes[1].grid(True)
             axes[1].set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
             axes[1].set_yticks(ticks=[30., 45.], 
@@ -1075,7 +1075,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     ax_v.set_ylim([0.0, max_value])
     ax_v.yaxis.set_label_coords(-0.04, 0.5)
     ax_v.xaxis.set_label_coords(0.5, -0.04)
-    ax_v.set_xlabel('Time (s)', 
+    ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
     ax_v.set_ylabel('Constraint Margin', 
                         fontsize=legend_fontsize)
@@ -1153,9 +1153,9 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     ax_st.set_ylim([0.0, max_value])
     ax_st.yaxis.set_label_coords(-0.04, 0.5)
     ax_st.xaxis.set_label_coords(0.5, -0.04)
-    ax_st.set_xlabel('Time (s)', 
+    ax_st.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
-    ax_st.set_ylabel('Safety filter process time (s)', 
+    ax_st.set_ylabel('Safety filter process time $(s)$', 
                         fontsize=legend_fontsize)
     # ax_st.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
