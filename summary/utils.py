@@ -419,9 +419,9 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     showcontrollist = []
     colors = {}
     colors['SoftLR'] = 'g'
-    colors['LR'] = 'r'
-    colors['CBF'] = 'b'
-    colors['SoftCBF'] = 'k'
+    colors['LR'] = 'k'
+    colors['CBF'] = 'r'
+    colors['SoftCBF'] = 'b'
     styles = ['solid', 'solid', 'solid', 'solid']
 
     for sh in filters:
@@ -697,7 +697,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     ax_v.xaxis.set_label_coords(0.5, -0.04)
     ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
-    ax_v.set_ylabel('Constraint Margin', 
+    ax_v.set_ylabel('Hard Constraint Margin', 
                         fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
@@ -820,9 +820,9 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     showcontrollist = []
     colors = {}
     colors['SoftLR'] = 'g'
-    colors['LR'] = 'r'
-    colors['CBF'] = 'b'
-    colors['SoftCBF'] = 'k'
+    colors['LR'] = 'k'
+    colors['CBF'] = 'r'
+    colors['SoftCBF'] = 'b'
     styles = ['solid', 'solid', 'solid', 'solid']
 
     for sh in filters:
@@ -1077,7 +1077,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     ax_v.xaxis.set_label_coords(0.5, -0.04)
     ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
-    ax_v.set_ylabel('Constraint Margin', 
+    ax_v.set_ylabel('Hard Constraint Margin', 
                         fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)

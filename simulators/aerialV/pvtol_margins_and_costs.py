@@ -107,6 +107,28 @@ class Pvtol6DConstraintMargin(BaseMargin):
         return cost
 
     @partial(jax.jit, static_argnames='self')
+    def get_constraint_margin(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        """
+        Args:
+            state (DeviceArray, vector shape)
+            ctrl (DeviceArray, vector shape)
+
+        Returns:
+            DeviceArray: scalar.
+        """
+        cost = jnp.inf
+
+        for _obs_constraint in self.obs_constraint:
+            _obs_constraint: BaseMargin
+            cost = jnp.minimum(
+                cost, _obs_constraint.get_stage_margin(
+                    state, ctrl))
+
+        return cost
+
+    @partial(jax.jit, static_argnames='self')
     def get_target_stage_margin(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
@@ -126,7 +148,7 @@ class Pvtol6DConstraintMargin(BaseMargin):
     def get_safety_metric(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
-        return self.get_stage_margin(
+        return self.get_constraint_margin(
             state, ctrl
         )
 
@@ -153,33 +175,7 @@ class Pvtol6DConstraintMargin(BaseMargin):
             obs_cons=obs_cons
         )
 
-class Pvtol6DSoftConstraintMargin(BaseMargin):
-    def __init__(self, config, plan_dyn):
-        super().__init__()
-        # System parameters.
-        self.ego_radius = config.EGO_RADIUS
-
-        # Safety cost function parameters.
-        self.width_right = config.WIDTH_RIGHT
-        self.width_left = config.WIDTH_LEFT
-        self.kappa = config.SMOOTHING_TEMP
-
-        self.obs_spec = config.OBS_SPEC
-        self.obsc_type = config.OBSC_TYPE
-        self.plan_dyn = plan_dyn
-
-        self.dim_x = plan_dyn.dim_x
-        self.dim_u = plan_dyn.dim_u
-
-        self.obs_constraint = []
-        if self.obsc_type == 'circle':
-            for circle_spec in self.obs_spec:
-                self.obs_constraint.append(
-                    CircleObsMargin(
-                        circle_spec=circle_spec, buffer=config.EGO_RADIUS
-                    )
-                )
-
+class Pvtol6DSoftConstraintMargin(Pvtol6DConstraintMargin):
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
         self, state: DeviceArray, ctrl: DeviceArray
@@ -214,14 +210,6 @@ class Pvtol6DSoftConstraintMargin(BaseMargin):
         Returns:
             DeviceArray: scalar.
         """
-        return self.get_stage_margin(
-            state, ctrl
-        )
-
-    @partial(jax.jit, static_argnames='self')
-    def get_safety_metric(
-        self, state: DeviceArray, ctrl: DeviceArray
-    ) -> DeviceArray:
         return self.get_stage_margin(
             state, ctrl
         )

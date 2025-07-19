@@ -228,6 +228,78 @@ class Bicycle5DConstraintMargin(BaseMargin):
             self.track_exit_cost = LowerHalfMargin(value=0.0, buffer=0, dim=0)
 
     @partial(jax.jit, static_argnames='self')
+    def get_constraint_margin(
+        self, state: DeviceArray, ctrl: DeviceArray
+    ) -> DeviceArray:
+        """
+        Args:
+            state (DeviceArray, vector shape)
+            ctrl (DeviceArray, vector shape)
+
+        Returns:
+            DeviceArray: scalar.
+        """
+        cost = jnp.inf
+
+        state_offset = self.plan_dyn.apply_rear_offset_correction(state)
+
+        if self.use_road:
+            cost = jnp.minimum(
+                cost,
+                self.road_position_min_cost.get_stage_margin(
+                    state_offset, ctrl
+                )
+            )
+
+            cost = jnp.minimum(
+                cost,
+                self.road_position_max_cost.get_stage_margin(
+                    state_offset, ctrl
+                )
+            )
+
+        for _obs_constraint in self.obs_constraint:
+            _obs_constraint: BaseMargin
+            cost = jnp.minimum(
+                cost, _obs_constraint.get_stage_margin(
+                    state_offset, ctrl))
+
+        if self.use_yaw:
+            cost = jnp.minimum(cost, self.yaw_min_cost.get_stage_margin(
+                state_offset, ctrl
+            )
+            )
+
+            cost = jnp.minimum(cost, self.yaw_max_cost.get_stage_margin(
+                state_offset, ctrl
+            )
+            )
+
+        if self.use_delta:
+            cost = jnp.minimum(cost, self.delta_min_cost.get_stage_margin(
+                state_offset, ctrl
+            )
+            )
+
+            cost = jnp.minimum(cost, self.delta_max_cost.get_stage_margin(
+                state_offset, ctrl
+            )
+            )
+
+        if self.use_vel:
+            cost = jnp.minimum(cost, self.vel_min_cost.get_stage_margin(
+                state_offset, ctrl)
+            )
+
+        if self.use_track_exit:
+            cost = jnp.minimum(cost, self.track_exit_cost.get_stage_margin(
+                state_offset, ctrl)
+            )
+
+        return cost
+
+
+    @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
@@ -505,7 +577,7 @@ class Bicycle5DConstraintMargin(BaseMargin):
     def get_safety_metric(
         self, state: DeviceArray, ctrl: DeviceArray
     ) -> DeviceArray:
-        return self.get_stage_margin(state, ctrl)
+        return self.get_constraint_margin(state, ctrl)
 
     @partial(jax.jit, static_argnames='self')
     def get_cost_dict(
