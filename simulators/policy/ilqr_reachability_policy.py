@@ -28,7 +28,7 @@ class iLQRReachability(iLQR):
             # NOTE: Comment the environment specific branching for profiling.
             if self.dyn.id == "PVTOL6D":
               controls[1, :] = self.dyn.mass * self.dyn.g
-            elif self.dyn.id == "Bicycle4D" or self.dyn.id == "Bicycle5D":
+            elif self.dyn.id == "Bicycle4D" or self.dyn.id == "Bicycle5D" or self.dyn.id=="PointMass4D":
               controls[0, :] = self.dyn.ctrl_space[0, 0]
             controls = jnp.array(controls)
         else:
@@ -83,6 +83,8 @@ class iLQRReachability(iLQR):
             elif line_search == 'trust_region_tune_margin':
                 alpha_chosen = self.trust_region_search_tune_margin( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical, J=J,  
                     c_x=c_x, c_xx=c_xx, Q_u=Q_u)
+            else:
+                raise Exception(f'{self.line_search} does not match any implemented line search') 
             
             states, controls, J_new, critical, failure_margins, reachable_margin = self.forward_pass(states, controls, K_closed_loop, k_open_loop, alpha_chosen) 
 

@@ -7,6 +7,7 @@ import time
 from .dynamics.bicycle5d import Bicycle5D
 from .dynamics.bicycle4d import Bicycle4D
 from .dynamics.pvtol6d import Pvtol6D
+from .dynamics.pointmass4d import PointMass4D
 
 from .costs.base_margin import BaseMargin
 
@@ -42,6 +43,8 @@ class Agent:
             self.dyn = Bicycle5D(config, action_space)
         elif config.DYN == "Bicycle4D":
             self.dyn = Bicycle4D(config, action_space)
+        elif config.DYN == "PointMass4D":
+            self.dyn = PointMass4D(config, action_space)
         elif config.DYN == "PVTOL6D":
             self.dyn = Pvtol6D(config, action_space)
         else:
@@ -145,12 +148,10 @@ class Agent:
             else:
                 task_ctrl = self.task_policy(obs)
             # Filter to safe control
-            start_time = time.time()
             _action, _solver_info = self.safety_policy.get_action(  # Proposed action.
                 state=kwargs['state'], obs=obs, task_ctrl=task_ctrl, warmup=warmup, 
                 prev_sol=prev_sol, prev_ctrl=prev_ctrl, 
             )
-            _solver_info['process_time'] = time.time() - start_time
         else:
             _action, _solver_info = self.policy.get_action(  # Proposed action.
                 obs=obs, agents_action=agents_action, **kwargs

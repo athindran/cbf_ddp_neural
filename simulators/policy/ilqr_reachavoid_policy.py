@@ -26,7 +26,7 @@ class iLQRReachAvoid(iLQR):
             # NOTE: Comment the environment specific branching for profiling.
             if self.dyn.id == "PVTOL6D":
                 controls[1, :] = self.dyn.mass * self.dyn.g
-            elif self.dyn.id == "Bicycle4D" or self.dyn.id == "Bicycle5D":
+            elif self.dyn.id == "Bicycle4D" or self.dyn.id == "Bicycle5D" or self.dyn.id=="PointMass4D":
                 controls[0, :] = self.dyn.ctrl_space[0, 0]
             controls = jnp.array(controls)
         else:
@@ -49,10 +49,10 @@ class iLQRReachAvoid(iLQR):
 
         is_inside_target = (target_margins[0] > 0)
         ctrl_costs = self.cost.ctrl_cost.get_mapped_margin(states, controls)
-        critical, reachavoid__margin = self.get_critical_points(
+        critical, reachavoid_margin = self.get_critical_points(
             failure_margins, target_margins)
 
-        J = (reachavoid__margin + jnp.sum(ctrl_costs)).astype(float)
+        J = (reachavoid_margin + jnp.sum(ctrl_costs)).astype(float)
 
         converged = False
         time0 = time.time()
@@ -93,7 +93,9 @@ class iLQRReachAvoid(iLQR):
                 alpha_chosen = self.trust_region_search_constant_margin( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical, J=J, Q_u=Q_u)
             elif line_search == 'trust_region_tune_margin':
                 alpha_chosen = self.trust_region_search_tune_margin( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical, J=J,  
-                    c_x=c_x, c_xx=c_xx, Q_u=Q_u)            
+                    c_x=c_x, c_xx=c_xx, Q_u=Q_u)   
+            else:
+                raise Exception(f'{self.line_search} does not match any implemented line search')         
             #alpha_chosen = self.armijo_line_search( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical, J=J, Q_u=Q_u)
             # alpha_chosen = self.trust_region_search_conservative(states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical,
             #                                                      J=J, c_x=c_x, c_xx=c_xx)
