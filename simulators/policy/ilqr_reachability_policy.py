@@ -28,7 +28,7 @@ class iLQRReachability(iLQR):
             # NOTE: Comment the environment specific branching for profiling.
             if self.dyn.id == "PVTOL6D":
               controls[1, :] = self.dyn.mass * self.dyn.g
-            elif self.dyn.id == "Bicycle4D" or self.dyn.id == "Bicycle5D":
+            elif self.dyn.id == "Bicycle4D" or self.dyn.id == "Bicycle5D" or self.dyn.id=="PointMass4D":
               controls[0, :] = self.dyn.ctrl_space[0, 0]
             controls = jnp.array(controls)
         else:
