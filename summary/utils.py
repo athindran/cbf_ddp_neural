@@ -281,7 +281,7 @@ def make_bic_animation_plots(env, obs_history, action_history, solver_info, safe
                   labels=[env.visual_extent[2], env.visual_extent[3]], fontsize=8)
 
     action_history = np.array(action_history)
-    axes[1].plot(action_history[:, 0], 'k', alpha = 1.0, linewidth=1.0)
+    axes[1].plot(action_history[:, 0], 'k', alpha = 1.0, linewidth=1.2)
     axes[1].set_xlim([0, config_solver.MAX_ITER_RECEDING])
     axes[1].set_ylim([action_space[0, 0], action_space[0, 1]])
     nsteps = action_history.shape[0]
@@ -298,7 +298,7 @@ def make_bic_animation_plots(env, obs_history, action_history, solver_info, safe
     axes[1].yaxis.set_label_coords(-0.04, 0.5)
     axes[1].xaxis.set_label_coords(0.5, -0.04)
 
-    axes[2].plot(action_history[:, 1], 'k', alpha = 1.0, linewidth=1.0)
+    axes[2].plot(action_history[:, 1], 'k', alpha = 1.0, linewidth=1.2)
     axes[2].set_xlim([0, config_solver.MAX_ITER_RECEDING])
     axes[2].set_ylim([action_space[1, 0], action_space[1, 1]])
     axes[2].fill_between(np.arange(nsteps), action_space[1, 0], action_space[1, 1], 
@@ -361,7 +361,7 @@ def make_pvtol_animation_plots(env, obs_history, action_history, solver_info, sa
     # plan.
     if safety_plan is not None:
         ax.plot(
-            safety_plan[0, :], safety_plan[1, :], linewidth=1.0,
+            safety_plan[0, :], safety_plan[1, :], linewidth=1.2,
             c='g', label='Safety plan'
         )
 
@@ -535,7 +535,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
             if showlist[idx]:
                 sc = ax.plot(
                     obs_data[:, 0], obs_data[:, 1], c=colorlist[int(idx)], alpha = 1.0, 
-                    label=labellist[int(idx)], linewidth=1.5, linestyle=stylelist[int(idx)]
+                    label=labellist[int(idx)], linewidth=1.2, linestyle=stylelist[int(idx)]
                 )
 
                 complete_filter_indices = plot_obses_complete_filter_list[idx]
@@ -561,12 +561,12 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
                         if not hide_label:
                             ax.plot(obs_data[barrier_filter_indices, 0], 
                                     obs_data[barrier_filter_indices, 1], 'x', 
-                                    color=colorlist[int(idx)], alpha=0.65, markersize=3.0, 
+                                    color=colorlist[int(idx)], alpha=0.65, markersize=1.2, 
                                     label=labellist[int(idx)] + ' filter')
                         else:
                             ax.plot(obs_data[barrier_filter_indices, 0], 
                                     obs_data[barrier_filter_indices, 1], 'x', 
-                                    color=colorlist[int(idx)], alpha=0.65, markersize=3.0, label='            ')
+                                    color=colorlist[int(idx)], alpha=0.65, markersize=1.2, label='            ')
                         #lgd_b = False
                     else:
                         ax.plot(obs_data[barrier_filter_indices, 0], obs_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.65, markersize=5.0)
@@ -615,22 +615,22 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
                 fillarray = np.zeros(maxsteps)
                 fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
                 axes[0].plot(x_times, controls_data[:, 0], label=labellist[int(idx)], c=colorlist[int(idx)], 
-                             alpha = 1.0, linewidth=1.5, linestyle=styles[idx])
+                             alpha = 1.0, linewidth=1.2, linestyle=styles[idx])
                 axes[1].plot(x_times, controls_data[:, 1], label=labellist[int(idx)], c=colorlist[int(idx)], 
-                             alpha = 1.0, linewidth=1.5, linestyle=styles[idx])
+                             alpha = 1.0, linewidth=1.2, linestyle=styles[idx])
                 axes[0].fill_between(x_times, action_space[0, 0], action_space[0, 1], 
                                      where=fillarray[0:nsteps], color=colorlist[int(idx)], alpha=0.15)
                 axes[1].fill_between(x_times, action_space[1, 0], action_space[1, 1], 
                                      where=fillarray[0:nsteps], color=colorlist[int(idx)], alpha=0.15)
                 if 'CBFDDP-SM' in labellist[int(idx)]:
                     axes[0].plot(x_times, plot_task_ctrl_list[idx][:, 0], label=labellist[int(idx)]+'-Task', c=colorlist[int(idx)], 
-                                alpha = 0.6, linewidth=1.5, linestyle='--')
+                                alpha = 0.6, linewidth=1.2, linestyle='--')
                     axes[1].plot(x_times, plot_task_ctrl_list[idx][:, 1], label=labellist[int(idx)]+'-Task', c=colorlist[int(idx)], 
-                                alpha = 0.6, linewidth=1.5, linestyle='--')
+                                alpha = 0.6, linewidth=1.2, linestyle='--')
                     axes[0].plot(x_times, plot_safe_opt_list[idx][:, 0], label=labellist[int(idx)]+'-SafeOpt', c=colorlist[int(idx)], 
-                                alpha = 0.6, linewidth=1.5, linestyle='dotted')
+                                alpha = 0.6, linewidth=1.2, linestyle='dotted')
                     axes[1].plot(x_times, plot_safe_opt_list[idx][:, 1], label=labellist[int(idx)]+'-SafeOpt', c=colorlist[int(idx)], 
-                                alpha = 0.6, linewidth=1.5, linestyle='dotted')
+                                alpha = 0.6, linewidth=1.2, linestyle='dotted')
 
             if not hide_label:
                 #axes[0].set_xlabel('Time index', fontsize=legend_fontsize)
@@ -680,13 +680,13 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
         if showcontrollist[idx]:
             x_times = dt*np.arange(safety_metrics_data.size)
             ax_v.plot(x_times, safety_metrics_data, label=labellist[int(idx)], c=colorlist[int(idx)], 
-                             alpha = 1.0, linewidth=1.5, linestyle='solid')
+                             alpha = 1.0, linewidth=1.2, linestyle='solid')
             nsteps = safety_metrics_data.size
             fillarray = np.zeros(nsteps)
             fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
             ax_v.fill_between(x_times, 0.0, max_value, 
                                      where=fillarray, color=colorlist[int(idx)], alpha=0.15)
-            ax_v.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
+            ax_v.plot(x_times, 0*x_times, 'k--', linewidth=1.2)
 
     ax_v.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
     ax_v.set_yticks(ticks=[0, max_value], 
@@ -724,7 +724,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     #         fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
     #         ax_sf.fill_between(x_times, 0.0, max_value, 
     #                                  where=fillarray, color=colorlist[int(idx)], alpha=0.3)
-    #         ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
+    #         ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.2)
 
     # ax_sf.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
     # ax_sf.set_yticks(ticks=[0, max_value], 
@@ -1066,7 +1066,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
             fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
             ax_v.fill_between(x_times, 0.0, max_value, 
                                      where=fillarray, color=colorlist[int(idx)], alpha=0.15)
-            ax_v.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
+            ax_v.plot(x_times, 0*x_times, 'k--', linewidth=1.2)
 
     ax_v.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
     ax_v.set_yticks(ticks=[0, max_value], 
@@ -1104,7 +1104,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     #         fillarray[np.array(plot_obses_barrier_filter_list[idx], dtype=np.int64)] = 1
     #         ax_sf.fill_between(x_times, 0.0, max_value, 
     #                                  where=fillarray, color=colorlist[int(idx)], alpha=0.3)
-    #         ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.0)
+    #         ax_sf.plot(x_times, 0*x_times, 'k--', linewidth=1.2)
 
     # ax_sf.set_xticks(ticks=[0, round(dt*maxsteps, 2)], labels=[0, round(dt*maxsteps, 2)], fontsize=legend_fontsize)
     # ax_sf.set_yticks(ticks=[0, max_value], 
