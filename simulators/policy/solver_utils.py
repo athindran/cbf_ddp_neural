@@ -49,7 +49,6 @@ def barrier_filter_quadratic_two(P, p, c, initialize, control_bias_term=np.zeros
             pass
 
     if prob.status not in ["optimal", "optimal_inaccurate"] or u[0] is None:
-        print("Quadratic Solver failed.")
         return np.array([0., 0.])
     return np.array([u[0].value, u[1].value])
 
