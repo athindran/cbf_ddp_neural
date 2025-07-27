@@ -93,7 +93,9 @@ class iLQRReachAvoid(iLQR):
                 alpha_chosen = self.trust_region_search_constant_margin( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical, J=J, Q_u=Q_u)
             elif line_search == 'trust_region_tune_margin':
                 alpha_chosen = self.trust_region_search_tune_margin( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical, J=J,  
-                    c_x=c_x, c_xx=c_xx, Q_u=Q_u)            
+                    c_x=c_x, c_xx=c_xx, Q_u=Q_u)   
+            else:
+                raise Exception(f'{self.line_search} does not match any implemented line search')         
             #alpha_chosen = self.armijo_line_search( states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical, J=J, Q_u=Q_u)
             # alpha_chosen = self.trust_region_search_conservative(states=states, controls=controls, Ks1=K_closed_loop, ks1=k_open_loop, critical=critical,
             #                                                      J=J, c_x=c_x, c_xx=c_xx)
