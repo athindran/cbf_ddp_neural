@@ -7,6 +7,7 @@ import time
 from .dynamics.bicycle5d import Bicycle5D
 from .dynamics.bicycle4d import Bicycle4D
 from .dynamics.pvtol6d import Pvtol6D
+from .dynamics.pointmass4d import PointMass4D
 
 from .costs.base_margin import BaseMargin
 
@@ -42,6 +43,8 @@ class Agent:
             self.dyn = Bicycle5D(config, action_space)
         elif config.DYN == "Bicycle4D":
             self.dyn = Bicycle4D(config, action_space)
+        elif config.DYN == "PointMass4D":
+            self.dyn = PointMass4D(config, action_space)
         elif config.DYN == "PVTOL6D":
             self.dyn = Pvtol6D(config, action_space)
         else:
