@@ -393,19 +393,23 @@ class CarSingle5DEnv(BaseSingleEnv):
         state[3, :] = yaw
         state[4, :] = delta
         ctrl = np.zeros((self.action_dim, nx * ny))
-
         state = jnp.array(state)
         ctrl = jnp.array(ctrl)
-
         if cost_type == "cost":
             cost = self.cost
         else:
             assert cost_type == "constraint"
             cost = self.cost
         v = cost.get_stage_margin(state, ctrl).reshape(nx, ny)
+        v = cost.get_mapped_margin(state, ctrl).reshape(nx, ny)
+        NEGATIVE_CONSTANT = 1.0
+        v = jnp.where(v>0, 0.0, v)
+        v = jnp.where(v<0, NEGATIVE_CONSTANT, v)
         ax.imshow(
             v.T, interpolation='none', extent=[xmin, xmax, ymin, ymax],
             origin="lower", cmap=cmap, vmin=vmin, vmax=vmax, zorder=-1, alpha=alpha
+            v.T, interpolation='none', extent=[xmin, xmax, ymin, ymax], cmap='Greys',
+                norm = matplotlib.colors.Normalize(vmin=0, vmax=2.5), label='SoftMargin (with ego radius)'
         )
 
     def _reshape(
