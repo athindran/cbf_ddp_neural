@@ -525,6 +525,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
         # track, obstacles, footprint
+        env.render_state_cost_map(ax, nx=500, ny=500, vel=0.0, yaw=0.0, delta=0.0)
         env.render_obs(ax=ax, c=c_obs)
         ax.axis(env.visual_extent)
         ax.set_aspect('equal')
@@ -561,12 +562,12 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
                         if not hide_label:
                             ax.plot(obs_data[barrier_filter_indices, 0], 
                                     obs_data[barrier_filter_indices, 1], 'x', 
-                                    color=colorlist[int(idx)], alpha=0.65, markersize=1.2, 
+                                    color=colorlist[int(idx)], alpha=0.65, markersize=0.5, 
                                     label=labellist[int(idx)] + ' filter')
                         else:
                             ax.plot(obs_data[barrier_filter_indices, 0], 
                                     obs_data[barrier_filter_indices, 1], 'x', 
-                                    color=colorlist[int(idx)], alpha=0.65, markersize=1.2, label='            ')
+                                    color=colorlist[int(idx)], alpha=0.65, markersize=0.5, label='            ')
                         #lgd_b = False
                     else:
                         ax.plot(obs_data[barrier_filter_indices, 0], obs_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.65, markersize=5.0)
