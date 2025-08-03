@@ -144,7 +144,10 @@ class iLQR(BasePolicy):
         U = jnp.zeros((self.dim_u, self.N))  # Assumes the last ctrl are zeros.
         X = X.at[:, 0].set(nominal_states[:, 0])
 
-        X, U = jax.lax.fori_loop(0, self.N, _rollout_step, (X, U))
+        X, U = jax.lax.fori_loop(0, self.N - 1, _rollout_step, (X, U))
+        # Last control is only used for control cost - relevant for PVTOL with setpoint.
+        U = U.at[:, self.N - 1].set(jnp.asarray(U[:, self.N - 2]))
+
         return X, U
 
     @partial(jax.jit, static_argnames='self')

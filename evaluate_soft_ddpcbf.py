@@ -209,7 +209,7 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
 
     yaw_constraint = None
     print(f"Road boundary: {road_boundary}")
-    print(f"Line searcg: {line_search}", )
+    print(f"Line search: {line_search}" )
     print(f"Filter type: {filter_type}" )
 
     # if yaw_constraint is not None:
