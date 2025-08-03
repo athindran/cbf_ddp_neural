@@ -70,6 +70,7 @@ class iLQRSafetyFilter(BasePolicy):
     ) -> np.ndarray:
 
         # Task feedback policy
+        start_time = time.time()
         initial_state = np.array(state)
         stopping_ctrl = np.array([self.dyn.ctrl_space[0, 0], 0])
         task_ctrl = np.array(task_ctrl)
@@ -134,6 +135,7 @@ class iLQRSafetyFilter(BasePolicy):
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = np.linalg.norm(
                     control_0 - task_ctrl, ord=1)
+                solver_info_0['process_time'] = time.time() - start_time
                 if solver_info_0['is_inside_target']:
                     # Render the target set controlled invariant
                     return stopping_ctrl + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
@@ -149,6 +151,7 @@ class iLQRSafetyFilter(BasePolicy):
                     solver_info_1['states'])
                 solver_info_0['num_iters'] = 0
                 solver_info_0['deviation'] = 0
+                solver_info_0['process_time'] = time.time() - start_time
                 return task_ctrl, solver_info_0
         elif(self.filter_type == "CBF" or self.filter_type == "SoftCBF"):
             gamma = self.gamma
@@ -251,6 +254,7 @@ class iLQRSafetyFilter(BasePolicy):
                 solver_info_0['deviation'] = np.linalg.norm(
                     control_cbf_cand - task_ctrl, ord=1)
                 solver_info_0['qcqp_initialize'] = control_cbf_cand - task_ctrl
+                solver_info_0['process_time'] = time.time() - start_time
                 return control_cbf_cand.ravel() + solver_info_0['K_closed_loop'][:, :, 0] @ (initial_state - solver_info_0['states'][:, 0]), solver_info_0
 
         self.filter_steps += 1
@@ -276,5 +280,6 @@ class iLQRSafetyFilter(BasePolicy):
                 initial_state - solver_info_0['states'][:, 0])
 
         solver_info_0['qcqp_initialize'] = safety_control - task_ctrl
+        solver_info_0['process_time'] = time.time() - start_time
 
         return safety_control, solver_info_0

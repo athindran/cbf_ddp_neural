@@ -148,12 +148,10 @@ class Agent:
             else:
                 task_ctrl = self.task_policy(obs)
             # Filter to safe control
-            start_time = time.time()
             _action, _solver_info = self.safety_policy.get_action(  # Proposed action.
                 state=kwargs['state'], obs=obs, task_ctrl=task_ctrl, warmup=warmup, 
                 prev_sol=prev_sol, prev_ctrl=prev_ctrl, 
             )
-            _solver_info['process_time'] = time.time() - start_time
         else:
             _action, _solver_info = self.policy.get_action(  # Proposed action.
                 obs=obs, agents_action=agents_action, **kwargs
