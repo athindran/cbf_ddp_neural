@@ -85,7 +85,7 @@ solver:
   # Filter options: 'none', 'LR', 'CBF'
   FILTER_TYPE: 'CBF'
   CONSTRAINT_TYPE: 'quadratic'
-  CBF_GAMMA: 0.99
+  CBF_GAMMA: 0.98
   SOFT_CBF_GAMMA: 0.99
   LR_THRESHOLD: 0.0
   OUT_FOLDER: exps/ilqr/bic5D/reachability_experiment_mulobs_config1/
