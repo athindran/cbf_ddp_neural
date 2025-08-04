@@ -211,6 +211,7 @@ class BaseSingleEnv(BaseEnv):
         obs_history.append(obs)
 
         prev_sol = None
+        margin_initializer = None
         prev_ctrl = np.array([0.0, 0.0])
         for t in range(T_rollout):
             #kwargs['state'] = self.state.copy()
@@ -243,7 +244,15 @@ class BaseSingleEnv(BaseEnv):
             deviation_history.append(solver_info['deviation'])
             safe_opt_history.append(solver_info['safe_opt_ctrl'])
             task_ctrl_history.append(solver_info['task_ctrl'])
-            safety_metric_history.append(self.cost.constraint.get_safety_metric(self.state, action))
+
+            if self.agent.self.compute_evaluation_margin:
+                _, margin_info = self.agent.evaluation_margin_solver.get_action(obs=np.array(self.state), state=np.array(self.state), 
+                                    controls=margin_initializer)
+                safety_metric_history.append(margin_info['marginopt'].ravel()[0])
+                margin_initializer = np.array(margin_info['controls'])
+            else:
+                safety_metrics_history.append(0.0)
+
 
             if advanced_animate:
                 if self.cost_type=="Reachability":

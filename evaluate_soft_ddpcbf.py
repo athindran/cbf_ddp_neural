@@ -171,6 +171,8 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
                     env.agent.dyn))
             cost = BicycleReachAvoid5DMargin(
                 config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type)
+            evaluation_cost = BicycleReachAvoid5DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), 'SoftCBF')
             env.cost = cost  # ! hacky
     # Not supported
     elif config_cost.COST_TYPE == "Reachability":
@@ -186,12 +188,15 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
                     env.agent.dyn))
             cost = BicycleReachAvoid5DMargin(
                 config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type)
+            evaluation_cost = BicycleReachAvoid5DMargin(
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), 'SoftCBF')
             env.cost = cost
 
     env.agent.init_policy(
         policy_type=policy_type,
         config=config_solver,
         cost=cost,
+        evaluation_cost=evaluation_cost,
         task_cost=task_cost)
     max_iter_receding = config_solver.MAX_ITER_RECEDING
 

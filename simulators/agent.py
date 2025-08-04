@@ -69,6 +69,7 @@ class Agent:
         self.agents_policy = {}
         self.agents_order = None
         self.is_task_ilqr = getattr(config, 'is_task_ilqr', False)
+        self.compute_evaluation_margin = True
 
     def integrate_forward(
         self, state: np.ndarray, control: np.ndarray = None
@@ -161,7 +162,9 @@ class Agent:
         return _action, _solver_info
 
     def init_policy(
-        self, policy_type: str, config, cost: Optional[BaseMargin] = None, **kwargs
+        self, policy_type: str, config, cost: Optional[BaseMargin] = None, 
+        evaluation_cost: Optional[BaseMargin] = None,
+        **kwargs
     ):
         self.policy_type = policy_type
 
@@ -194,6 +197,18 @@ class Agent:
             raise ValueError(
                 "The policy type ({}) is not supported!".format(policy_type)
             )
+        if self.compute_evaluation_margin:
+            if config.COST_TYPE=='Reachability':
+                self.evaluation_margin_solver = iLQRReachability(
+                    'margin_solver', config, self.dyn, evaluation_cost)
+            elif config.COST_TYPE=='Reachavoid':
+                self.evaluation_margin_solver = iLQRReachAvoid(
+                    'margin_solver', config, self.dyn, evaluation_cost)
+            else:
+                raise Exception('Not implemented') 
+        else:
+            self.evaluation_margin_solver = None
+
 
     def report(self):
         print(self.id)

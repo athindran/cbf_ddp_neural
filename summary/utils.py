@@ -420,8 +420,8 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     colors = {}
     colors['SoftLR'] = 'g'
     colors['LR'] = 'k'
-    colors['CBF'] = 'r'
-    colors['SoftCBF'] = 'b'
+    colors['CBF'] = (0.9, 0.0, 0.15, 1.0)
+    colors['SoftCBF'] = (0.15, 0.0, 1.0, 1.0)
     styles = ['solid', 'solid', 'solid', 'solid']
 
     for sh in filters:
@@ -520,12 +520,14 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
         c_obs = 'k'
         env = CarSingle5DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(5.7, 4.2))
+        fig = plt.figure(layout='constrained', figsize=(5.5, 4.5))
+        title_string = config_cost.COST_TYPE + " - " + config_agent.DYN
+        fig.suptitle(title_string, fontsize=12)
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
         # track, obstacles, footprint
-        env.render_state_cost_map(ax, nx=500, ny=500, vel=0.0, yaw=0.0, delta=0.0)
+        # env.render_state_cost_map(ax, nx=500, ny=500, vel=0.0, yaw=0.0, delta=0.0)
         env.render_obs(ax=ax, c=c_obs)
         ax.axis(env.visual_extent)
         ax.set_aspect('equal')
@@ -698,8 +700,12 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     ax_v.xaxis.set_label_coords(0.5, -0.04)
     ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
-    ax_v.set_ylabel('Hard Constraint Margin', 
-                        fontsize=legend_fontsize)
+    if config_cost.COST_TYPE == 'Reachability':
+        ax_v.set_ylabel('Reachability Margin (SM)', 
+                            fontsize=legend_fontsize)
+    else:
+        ax_v.set_ylabel('ReachAvoid Margin (SM)', 
+                    fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
@@ -822,8 +828,8 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     colors = {}
     colors['SoftLR'] = 'g'
     colors['LR'] = 'k'
-    colors['CBF'] = 'r'
-    colors['SoftCBF'] = 'b'
+    colors['CBF'] = (0.9, 0.0, 0.15, 1.0)
+    colors['SoftCBF'] = (0.15, 0.0, 1.0, 1.0)
     styles = ['solid', 'solid', 'solid', 'solid']
 
     for sh in filters:
@@ -903,7 +909,9 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
         c_obs = 'k'
         env = Pvtol6DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(5.7, 4.2))
+        fig = plt.figure(layout='constrained', figsize=(5.5, 4.5))
+        title_string = config_cost.COST_TYPE + " - " + config_agent.DYN
+        fig.suptitle(title_string, fontsize=12)
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
         subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
         ax = subfigs_col1[0].subplots(1, 1)
@@ -1078,8 +1086,12 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     ax_v.xaxis.set_label_coords(0.5, -0.04)
     ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
-    ax_v.set_ylabel('Hard Constraint Margin', 
-                        fontsize=legend_fontsize)
+    if config_cost.COST_TYPE == 'Reachability':
+        ax_v.set_ylabel('Reachability Margin (SM)', 
+                            fontsize=legend_fontsize)
+    else:
+        ax_v.set_ylabel('ReachAvoid Margin (SM)', 
+                    fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
         
