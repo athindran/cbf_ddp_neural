@@ -245,7 +245,7 @@ class BaseSingleEnv(BaseEnv):
             safe_opt_history.append(solver_info['safe_opt_ctrl'])
             task_ctrl_history.append(solver_info['task_ctrl'])
 
-            if self.agent.self.compute_evaluation_margin:
+            if self.agent.compute_evaluation_margin:
                 _, margin_info = self.agent.evaluation_margin_solver.get_action(obs=np.array(self.state), state=np.array(self.state), 
                                     controls=margin_initializer)
                 safety_metric_history.append(margin_info['marginopt'].ravel()[0])
