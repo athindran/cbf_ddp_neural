@@ -297,7 +297,7 @@ def main(config_file, road_boundary, filter_type, is_task_ilqr, line_search):
                 #Image(open(gif_path, 'rb').read(), width=400)
         # endregion
 
-    return out_folder, plot_tag, config_agent
+    return out_folder, plot_tag, config_agent, config_solver
 
 
 if __name__ == "__main__":
@@ -333,7 +333,7 @@ if __name__ == "__main__":
     
     out_folder, plot_tag, config_agent = None, None, None
     for filter_type in filters:
-        out_folder, plot_tag, config_agent = main(args.config_file, args.road_boundary, filter_type=filter_type, is_task_ilqr=(not args.naive_task),         
+        out_folder, plot_tag, config_agent, config_solver = main(args.config_file, args.road_boundary, filter_type=filter_type, is_task_ilqr=(not args.naive_task),         
                                                     line_search=args.line_search)
 
     make_bicycle_comparison_report(
@@ -342,5 +342,7 @@ if __name__ == "__main__":
         tag=plot_tag + "_" + str(args.road_boundary,),
         road_boundary=args.road_boundary,
         dt=config_agent.DT,
+        cbf_gamma=config_solver.CBF_GAMMA,
+        soft_cbf_gamma=config_solver.SOFT_CBF_GAMMA,
         filters=filters)
 

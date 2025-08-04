@@ -396,7 +396,7 @@ def make_animation_plots(env, obs_history, action_history, solver_info, safety_p
 
 
 def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./plots_paper/", 
-                    tag="reachavoid", road_boundary=1.2, dt=0.01, filters=['SoftCBF']):
+                    tag="reachavoid", road_boundary=1.2, dt=0.01, filters=['SoftCBF'], cbf_gamma=-10, soft_cbf_gamma=-10):
     if not os.path.exists(plot_folder):
         os.makedirs(plot_folder)
 
@@ -405,7 +405,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
 
     hide_label = False
 
-    legend_fontsize = 7.5
+    legend_fontsize = 7.0
     road_bounds = [road_boundary]
     yaw_consts = [None]
     label_yc = [None]
@@ -417,6 +417,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     rblist = []
     showlist = []
     showcontrollist = []
+    gammavals = []
     colors = {}
     colors['SoftLR'] = 'g'
     colors['LR'] = 'k'
@@ -440,12 +441,16 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
                     if not hide_label:
                         if sh=='SoftCBF':
                             labellist.append("CBFDDP-SM")
+                            gammavals.append(soft_cbf_gamma)
                         elif sh=='CBF':
                             labellist.append("CBFDDP-HM")
+                            gammavals.append(cbf_gamma)
                         elif sh=='SoftLR':
                             labellist.append("LRDDP-SM")
+                            gammavals.append(0.0)
                         else:
                             labellist.append(sh + "DDP")
+                            gammavals.append(0.0)
                     else:
                         labellist.append("                          ")
                 colorlist.append(colors[sh])
@@ -520,11 +525,11 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
         c_obs = 'k'
         env = CarSingle5DEnv(config_env, config_agent, config_cost)
 
-        fig = plt.figure(layout='constrained', figsize=(5.5, 4.5))
+        fig = plt.figure(layout='constrained', figsize=(5.5, 4.7))
         title_string = config_cost.COST_TYPE + " - " + config_agent.DYN
-        fig.suptitle(title_string, fontsize=12)
+        fig.suptitle(title_string, fontsize=10)
         subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.6, 1])
-        subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.5])
+        subfigs_col1 = subfigs[0].subfigures(2, 1, height_ratios=[1, 1.4])
         ax = subfigs_col1[0].subplots(1, 1)
         # track, obstacles, footprint
         # env.render_state_cost_map(ax, nx=500, ny=500, vel=0.0, yaw=0.0, delta=0.0)
@@ -538,7 +543,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
             if showlist[idx]:
                 sc = ax.plot(
                     obs_data[:, 0], obs_data[:, 1], c=colorlist[int(idx)], alpha = 1.0, 
-                    label=labellist[int(idx)], linewidth=1.0, linestyle=stylelist[int(idx)]
+                    label=labellist[int(idx)] + f"($\gamma$={gammavals[idx]})", linewidth=1.0, linestyle=stylelist[int(idx)]
                 )
 
                 complete_filter_indices = plot_obses_complete_filter_list[idx]
@@ -1087,10 +1092,10 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
     if config_cost.COST_TYPE == 'Reachability':
-        ax_v.set_ylabel('Reachability Margin (SM)', 
+        ax_v.set_ylabel('Reachability Margin (HM)', 
                             fontsize=legend_fontsize)
     else:
-        ax_v.set_ylabel('ReachAvoid Margin (SM)', 
+        ax_v.set_ylabel('ReachAvoid Margin (HM)', 
                     fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)

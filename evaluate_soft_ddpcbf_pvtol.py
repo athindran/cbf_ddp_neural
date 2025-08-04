@@ -93,7 +93,7 @@ def main(config_file, filter_type, is_task_ilqr):
                 config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             env.cost = cost  # ! hacky
             evaluation_cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type='SoftCBF')
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type='CBF')
         else:
             policy_type = "iLQRSafetyFilter"
             task_cost = Pvtol6DCost(
@@ -102,7 +102,7 @@ def main(config_file, filter_type, is_task_ilqr):
             cost = PvtolReachAvoid6DMargin(
                 config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type=filter_type)
             evaluation_cost = PvtolReachAvoid6DMargin(
-                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type='SoftCBF')
+                config_ilqr_cost, copy.deepcopy(env.agent.dyn), filter_type='CBF')
             env.cost = cost
 
     env.agent.init_policy(
