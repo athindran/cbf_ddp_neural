@@ -813,7 +813,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
 
 
 def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", plot_folder="./plots_paper/", 
-                    tag="reachavoid", dt=0.01, filters=['SoftCBF']):
+                    tag="reachavoid", dt=0.01, filters=['SoftCBF'], cbf_gamma=-10, soft_cbf_gamma=-10):
     if not os.path.exists(plot_folder):
         os.makedirs(plot_folder)
 
@@ -830,6 +830,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     stylelist = []
     showlist = []
     showcontrollist = []
+    gammavals = []
     colors = {}
     colors['SoftLR'] = 'g'
     colors['LR'] = 'k'
@@ -842,12 +843,16 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
         if not hide_label:
             if sh=='SoftCBF':
                 labellist.append("CBFDDP-SM")
+                gammavals.append(soft_cbf_gamma)
             elif sh=='CBF':
                 labellist.append("CBFDDP-HM")
+                gammavals.append(cbf_gamma)
             elif sh=='SoftLR':
                 labellist.append("LRDDP-SM")
+                gammavals.append(0.0)
             else:
                 labellist.append(sh + "DDP")
+                gammavals.append(0.0)
         else:
             labellist.append("                          ")
         colorlist.append(colors[sh])
@@ -931,7 +936,7 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
             if showlist[idx]:
                 sc = ax.plot(
                     obs_data[:, 0], obs_data[:, 1], c=colorlist[int(idx)], alpha = 1.0, 
-                    label=labellist[int(idx)], linewidth=1.5, linestyle=stylelist[int(idx)]
+                    label=labellist[int(idx)] + f"($\gamma$={gammavals[idx]})", linewidth=1.5, linestyle=stylelist[int(idx)]
                 )
 
                 complete_filter_indices = plot_obses_complete_filter_list[idx]

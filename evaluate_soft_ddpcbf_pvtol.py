@@ -276,7 +276,7 @@ def main(config_file, filter_type, is_task_ilqr):
                 image = imageio.imread(filename)
                 writer.append_data(image)
 
-    return out_folder, plot_tag, config_agent
+    return out_folder, plot_tag, config_agent, config_solver
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -293,13 +293,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     is_task_ilqr = True
-    out_folder, plot_tag, config_agent = main(args.config_file, filter_type='SoftCBF', is_task_ilqr=is_task_ilqr)
-    out_folder, plot_tag, config_agent = main(args.config_file, filter_type='CBF', is_task_ilqr=is_task_ilqr)
+    out_folder, plot_tag, config_agent, config_solver = main(args.config_file, filter_type='SoftCBF', is_task_ilqr=is_task_ilqr)
+    out_folder, plot_tag, config_agent, config_solver = main(args.config_file, filter_type='CBF', is_task_ilqr=is_task_ilqr)
 
     make_pvtol_comparison_report(
         out_folder,
         plot_folder='./plots_summary/',
         tag=plot_tag,
         dt=config_agent.DT,
+        cbf_gamma=config_solver.CBF_GAMMA,
+        soft_cbf_gamma=config_solver.SOFT_CBF_GAMMA,
         filters=['SoftCBF', 'CBF'])
 
