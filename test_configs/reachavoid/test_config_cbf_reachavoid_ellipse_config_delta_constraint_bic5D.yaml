@@ -31,7 +31,7 @@ cost:
   W_VEL: 0.01
   YAWT_MIN: -1.1
   YAWT_MAX: 1.1
-  V_REF: 2.5
+  V_REF: 2.0
   VT_MIN: 0.0
   VT_MAX: 10.0
   Q1_V: 0.1
@@ -56,18 +56,18 @@ cost:
   YAW_MAX: 1.57
   DELTA_MIN: -0.5
   DELTA_MAX: 0.5
-  SMOOTHING_TEMP: 5.0
+  SMOOTHING_TEMP: 2.5
 
 agent:
   AGENT_ID: ego
   DYN: Bicycle5D
   FOOTPRINT: Circle
-  EGO_RADIUS: 0.4
+  EGO_RADIUS: 0.25
   ACTION_RANGE:
     - [-1.5, 1.5]
     - [-3.0, 3.0]
   # CAR DYNAMICS
-  WHEELBASE: 0.8
+  WHEELBASE: 0.5
   DT: 0.01
   DELTA_MIN: -1.6  # rad
   DELTA_MAX: 1.6
@@ -76,7 +76,7 @@ agent:
   V_MAX: 10.0
 
 solver:
-  INIT_STATE: [0.0, 0.0, 2.5, 0.05, 0.0]
+  INIT_STATE: [0.0, 0.0, 2.0, 0.05, 0.0]
   N: 50
   MAX_ITER: 20
   MAX_ITER_RECEDING: 1300
