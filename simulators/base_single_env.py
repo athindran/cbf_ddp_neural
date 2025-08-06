@@ -248,7 +248,7 @@ class BaseSingleEnv(BaseEnv):
             if self.agent.compute_evaluation_margin:
                 _, margin_info = self.agent.evaluation_margin_solver.get_action(obs=np.array(self.state), state=np.array(self.state), 
                                     controls=margin_initializer)
-                safety_metric_history.append(margin_info['marginopt'].ravel()[0])
+                safety_metric_history.append(margin_info['Vopt'].ravel()[0])
                 margin_initializer = np.array(margin_info['controls'])
             else:
                 safety_metrics_history.append(0.0)
