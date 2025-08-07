@@ -235,7 +235,7 @@ class BaseSingleEnv(BaseEnv):
             obs_history.append(obs)
             action_history.append(action)
             plan_history.append(solver_info)
-            value_history.append(solver_info['marginopt'])
+            value_history.append(solver_info['Vopt'])
             reward_history.append(reward)
             step_history.append(step_info)
             process_time_history.append(solver_info['process_time'])
