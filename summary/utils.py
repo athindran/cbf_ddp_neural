@@ -706,10 +706,10 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
     ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
     if config_cost.COST_TYPE == 'Reachability':
-        ax_v.set_ylabel('Reachability Margin (SM)', 
+        ax_v.set_ylabel('Reachability Value (SM)', 
                             fontsize=legend_fontsize)
     else:
-        ax_v.set_ylabel('ReachAvoid Margin (SM)', 
+        ax_v.set_ylabel('ReachAvoid Value (SM)', 
                     fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
@@ -1097,10 +1097,10 @@ def make_pvtol_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", pl
     ax_v.set_xlabel('Time $(s)$', 
                         fontsize=legend_fontsize)
     if config_cost.COST_TYPE == 'Reachability':
-        ax_v.set_ylabel('Reachability Margin (HM)', 
+        ax_v.set_ylabel('Reachability Value (HM)', 
                             fontsize=legend_fontsize)
     else:
-        ax_v.set_ylabel('ReachAvoid Margin (HM)', 
+        ax_v.set_ylabel('ReachAvoid Value (HM)', 
                     fontsize=legend_fontsize)
     # ax_v.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
     #                        ncol=3, bbox_to_anchor=(0.05, 1.1), fancybox=False, shadow=False)
