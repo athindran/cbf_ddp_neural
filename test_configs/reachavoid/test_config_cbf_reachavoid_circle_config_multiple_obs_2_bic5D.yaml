@@ -31,7 +31,7 @@ cost:
   W_VEL: 0.01
   YAWT_MIN: -1.1
   YAWT_MAX: 1.1
-  V_REF: 3.0
+  V_REF: 2.5
   VT_MIN: 0.0
   VT_MAX: 10.0
   Q1_V: 0.1
