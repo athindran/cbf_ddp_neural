@@ -33,7 +33,7 @@ make_inference_fn, params, _ = train_fn(environment=env)
 # create an env with auto-reset
 eval_env = envs.create(env_name=env_name, backend=backend)
 params = model.load_params(f'./brax_utils/trained_models/{env_name}_params')
-inference_fn = make_inference_fn(params)
+inference_fn = make_inference_fn(params, deterministic=True)
 
 jit_env_reset = jax.jit(eval_env.reset)
 jit_env_step = jax.jit(eval_env.step)
@@ -45,7 +45,7 @@ state = jit_env_reset(rng=rng)
 for _ in range(1000):
   rollout.append(state.pipeline_state)
   act_rng, rng = jax.random.split(rng)
-  act, _ = jit_inference_fn(state.obs, act_rng)
+  act, _ = jit_inference_fn(state.obs, 0)
   state = jit_env_step(state, act)
 
 render_every = 2
