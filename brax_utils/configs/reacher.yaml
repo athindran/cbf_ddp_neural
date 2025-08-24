@@ -16,7 +16,7 @@ solver:
   LINE_SEARCH: 'baseline'
   # Filter options: 'none', 'LR', 'CBF'
   FILTER_TYPE: 'CBF'
-  CONSTRAINT_TYPE: 'quadratic'
+  CONSTRAINT_TYPE: 'linear'
   CBF_GAMMA: 0.9
   SOFT_CBF_GAMMA: 0.9
   LR_THRESHOLD: 0.0

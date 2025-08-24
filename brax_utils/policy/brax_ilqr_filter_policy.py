@@ -68,7 +68,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
 
         if prev_sol is None or prev_sol['resolve']:
             control_0, solver_info_0 = self.solver_0.get_action(
-                obs=obs, controls=controls_initialize, initial_state=state)
+                obs=obs, controls=controls_initialize, state=state)
         else:
             # Potential source of acceleration. We don't need to resolve both ILQs as we can reuse
             # solution from previous time. - Unused currently.
@@ -93,7 +93,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
         boot_controls = jnp.asarray(solver_info_0['controls'])
 
         _, solver_info_1 = self.solver_1.get_action(
-            obs=state_imaginary, controls=boot_controls, initial_state=state_imaginary)
+            obs=state_imaginary, controls=boot_controls, state=state_imaginary)
 
         solver_info_0['Vopt_next'] = solver_info_1['Vopt']
         solver_info_0['marginopt_next'] = solver_info_1['marginopt']
@@ -113,7 +113,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
 
         # Setting tolerance to zero does not cause big improvements at the
         # cost of more unnecessary looping
-        cbf_tol = -1e-2
+        cbf_tol = -1e-4
         # Conditioning parameter out of abundance of caution
         eps_reg = 1e-8
 
@@ -127,7 +127,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
         # Exit loop once CBF constraint satisfied or maximum iterations
         # violated
         control_bias_term = np.zeros((self.dim_u,))
-        while((constraint_violation < cbf_tol or warmup) and num_iters < 2):
+        while((constraint_violation < cbf_tol or warmup) and num_iters < 5):
             num_iters = num_iters + 1
 
             # Extract information from solver for enforcing constraint
@@ -160,7 +160,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
 
             control_bias_term = control_bias_term + control_correction
             control_cbf_cand_jnp = control_cbf_cand_jnp + control_correction
-            control_cbf_cand_jnp = jnp.clip(control_cbf_cand_jnp, self.brax_env.action_limits[0], self.brax_env.action_limits[1])
+            # control_cbf_cand_jnp = jnp.clip(control_cbf_cand_jnp, self.brax_env.action_limits[0], self.brax_env.action_limits[1])
 
             # Restart from current point and run again
             solver_initial = (prev_ctrl - control_cbf_cand)
@@ -171,7 +171,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
             _, solver_info_1 = self.solver_2.get_action(obs=state_imaginary,
                                                         controls=jnp.asarray(
                                                             solver_info_1['controls']),
-                                                        initial_state=state_imaginary)
+                                                        state=state_imaginary)
             solver_info_0['Vopt_next'] = solver_info_1['Vopt']
             solver_info_0['marginopt_next'] = solver_info_1['marginopt']
             solver_info_0['is_inside_target_next'] = solver_info_1['is_inside_target']

@@ -6,10 +6,12 @@ from brax import envs
 from brax.envs.base import State
 from abc import ABC
 from matplotlib import pyplot as plt
+from .barkour_env import BarkourEnv
 import numpy as np
 import os
 import math
 
+envs.register_environment('barkour', BarkourEnv)
 
 class WrappedBraxEnv(ABC):
     def __init__(self, env_name, backend) -> None:
@@ -31,6 +33,14 @@ class WrappedBraxEnv(ABC):
             self.dim_qdd_states = 0
             self.action_limits = np.array([[-1., -1., -1., -1., -1., -1., -1., -1.], [1., 1., 1., 1., 1., 1., 1., 1.]])
             self.dt = 0.05
+        elif env_name=='barkour':
+            self.dim_x = 36
+            self.dim_u = 12
+            self.dim_q_states = 18
+            self.dim_qd_states = 18
+            self.dim_qdd_states = 0
+            self.action_limits = np.array([[-1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.], [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]])
+            self.dt = 0.02
         else:
             # Raise not implemented error.
             pass
@@ -125,12 +135,12 @@ class WrappedBraxEnv(ABC):
         nsteps = states.shape[0]
         range_space = np.arange(0, nsteps) * self.dt
 
-        rowdict = {'ant': 4, 'reacher': 2}
+        rowdict = {'ant': 4, 'barkour': 4, 'reacher': 2}
         nrows = rowdict[self.env_name]
         ncols = math.ceil(self.dim_q_states/nrows)
-        figsize = {'ant': (35, 16), 'reacher': (9, 4)}
-        fontsize = {'ant': 14, 'reacher': 10}
-        linewidths = {'ant': 1.5, 'reacher': 2.5}
+        figsize = {'ant': (35, 16), 'barkour': (35, 16), 'reacher': (9, 4)}
+        fontsize = {'ant': 14, 'barkour': 12, 'reacher': 12}
+        linewidths = {'ant': 1.5, 'barkour': 1.2, 'reacher': 1.5}
         legend_fontsize = fontsize[self.env_name]
         linewidth = linewidths[self.env_name]
 
@@ -158,12 +168,12 @@ class WrappedBraxEnv(ABC):
 
         nrows = rowdict[self.env_name]
         ncols = math.ceil(self.dim_qd_states/nrows)
-        figsize = {'ant': (35, 16), 'reacher': (9, 4)}
+        figsize = {'ant': (35, 16), 'barkour': (45, 16), 'reacher': (9, 4)}
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize[self.env_name], sharex=True)
         axes = axes.ravel()
         for idx in range(self.dim_qd_states):
             axes[idx].plot(range_space, states[:, self.dim_q_states + idx], linewidth=linewidth)
-            axes[idx].set_ylabel(f'qd {idx}', fontsize=legend_fontsize)
+            axes[idx].set_ylabel('$\dot{q}$ ' + str(idx), fontsize=legend_fontsize)
             axes[idx].set_xlabel('Time (s)', fontsize=legend_fontsize)
             min_r = states[:, self.dim_q_states + idx].min()
             max_r = states[:, self.dim_q_states + idx].max()
@@ -180,8 +190,8 @@ class WrappedBraxEnv(ABC):
         fig.savefig(os.path.join(save_folder, f'{policy_type}_qd_states.png'), bbox_inches='tight')
         plt.close()
 
-        rowdict = {'ant': 2, 'reacher': 1}
-        figsize = {'ant': (35, 9), 'reacher': (9, 4)}
+        rowdict = {'ant': 2, 'barkour': 3, 'reacher': 1}
+        figsize = {'ant': (35, 9), 'barkour': (45, 14), 'reacher': (9, 4)}
         nrows = rowdict[self.env_name]
         ncols = math.ceil(self.dim_u/nrows)
 
