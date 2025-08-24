@@ -580,7 +580,7 @@ def make_bicycle_comparison_report(prefix="./exps_may/ilqr/bic5D/yaw_testing/", 
                         ax.plot(obs_data[barrier_filter_indices, 0], obs_data[barrier_filter_indices, 1], 'x', color=colorlist[int(idx)], alpha=0.65, markersize=5.0)
     
             ax.legend(framealpha=0, fontsize=legend_fontsize, loc='upper left', 
-                      ncol=2, bbox_to_anchor=(-0.05, 1.35), fancybox=False, shadow=False)
+                      ncol=2, bbox_to_anchor=(-0.05, 1.40), fancybox=False, shadow=False)
 
             
             if hide_label:
