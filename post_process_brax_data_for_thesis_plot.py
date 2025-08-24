@@ -59,30 +59,37 @@ def make_barkour_plot():
 
     img_default = brax_env.env.render(state.pipeline_state, camera='default')
     img_track = brax_env.env.render(state.pipeline_state, camera='track')
+    legend_fontsize = 10
 
     subfigs_col1 = subfigs[0].subfigures(2, 1, wspace=0.05, height_ratios=[1, 1])
     ax = subfigs_col1[0].subplots(1, 1)
     ax.imshow(img_default)
-    subfigs_col1 = subfigs[1].subfigures(2, 1, wspace=0.05, height_ratios=[1, 1])
+    ax.set_xticks(ticks=[], labels=[], fontsize=legend_fontsize)
+    ax.set_yticks(ticks=[], labels=[], fontsize=legend_fontsize)
+
     ax = subfigs_col1[1].subplots(1, 1)
     ax.imshow(img_track)
-    legend_fontsize = 10
+    ax.set_xticks(ticks=[], labels=[], fontsize=legend_fontsize)
+    ax.set_yticks(ticks=[], labels=[], fontsize=legend_fontsize)
     # ax.set_xticks(ticks=[0, 320], labels=[0, 320], fontsize=legend_fontsize)
     # ax.set_yticks(ticks=[0, 220], labels=[0, 220], fontsize=legend_fontsize)
+
     subfigs_col2 = subfigs[1].subfigures(2, 1, wspace=0.05, height_ratios=[1, 1])
     ax = subfigs_col2[0].subplots(1, 1)
     ax.plot(range_space, barkour_cbfddp_values, label='CBFDDP (HM)', color='b')
     ax.plot(range_space, barkour_neural_values, label='Neural', color='r', alpha=0.6)
     ax.set_xticks(ticks=[0, nsteps*brax_env.dt], labels=[0, nsteps], fontsize=legend_fontsize)
-    ax.set_yticks(ticks=[0.0, 30.0], labels=[0.0, 30.0], fontsize=legend_fontsize)
-    ax.fill_between(range_space, 0.0, 31.0,
+    ax.set_yticks(ticks=[0.0, 6.5], labels=[0.0, 6.5], fontsize=legend_fontsize)
+    ax.fill_between(range_space, 0.0, 6.5,
                             where=barkour_cbfddp_is_filter_active[0:nsteps], color='b', alpha=0.15)
-    ax.fill_between(range_space, 0.0, 31.0,
+    ax.fill_between(range_space, 0.0, 6.5,
                     where=barkour_cbfddp_is_filter_fail[0:nsteps], color='r', alpha=0.15)
+    ax.set_ylim([0.0, 6.5])
     ax.yaxis.set_label_coords(-0.04, 0.5)
     ax.xaxis.set_label_coords(0.5, -0.04)
     ax.set_ylabel('Value function')
     ax.set_xlabel('Time (s)')
+    ax.legend(fontsize=9, loc='upper left', bbox_to_anchor=(0.05, 1.4), ncol=1)
     
     ax = subfigs_col2[1].subplots(1, 1)
     ax.plot(range_space, barkour_cbfddp_control_cycle_times, label='CBFDDP (HM)', color='b')
@@ -94,7 +101,7 @@ def make_barkour_plot():
                     where=barkour_cbfddp_is_filter_fail[0:nsteps], color='r', alpha=0.15)
     ax.yaxis.set_label_coords(-0.04, 0.5)
     ax.xaxis.set_label_coords(0.5, -0.04)
-    ax.set_ylim([-1.0, 3.0])
+    ax.set_ylim([0.0, 3.0])
     ax.set_ylabel('Filter time $(s)$')
     ax.set_xlabel('Time (s)')
 
@@ -144,8 +151,8 @@ def make_reacher_plot():
     ax = subfigs_col1[0].subplots(1, 1)
     ax.imshow(img)
     legend_fontsize = 8.2
-    ax.set_xticks(ticks=[0, 320], labels=[0, 320], fontsize=legend_fontsize)
-    ax.set_yticks(ticks=[0, 220], labels=[0, 220], fontsize=legend_fontsize)
+    ax.set_xticks(ticks=[], labels=[], fontsize=legend_fontsize)
+    ax.set_yticks(ticks=[], labels=[], fontsize=legend_fontsize)
 
     ax = subfigs_col1[1].subplots(1, 1)
     ax.plot(range_space, reacher_cbfddp_values, label='CBFDDP (HM)', color='b')
