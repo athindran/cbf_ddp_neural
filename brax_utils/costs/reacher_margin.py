@@ -107,6 +107,7 @@ class ReacherAngularVelocityConstraintCost(BaseMargin):
         self.dim_x = env.dim_x
         self.dim_u = env.dim_u
         self.max_angular_velocity = config.MAX_ANGULAR_VELOCITY
+        self.max_target_angular_velocity = config.MAX_TARGET_ANGULAR_VELOCITY
 
     @partial(jax.jit, static_argnames='self')
     def get_stage_margin(
@@ -138,7 +139,12 @@ class ReacherAngularVelocityConstraintCost(BaseMargin):
         Returns:
             Array: scalar.
         """
-        return self.stage_margin(state, ctrl)
+        cost = jnp.inf
+        cost = jnp.minimum(cost, self.max_target_angular_velocity[0]**2 - state[2]**2)
+        cost = jnp.minimum(cost, self.max_target_angular_velocity[1]**2 - state[3]**2)
+
+        return cost
+
 
 class ReacherReachabilityMargin(BaseMargin):
 

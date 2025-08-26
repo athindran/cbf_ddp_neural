@@ -17,6 +17,7 @@ from brax_utils import ( WrappedBraxEnv,
       ReacherRegularizedGoalCost, 
       iLQRBrax, 
       iLQRBraxReachability, 
+      iLQRBraxReachAvoid,
       iLQRBraxSafetyFilter,
       ReacherReachabilityMargin,
       AntReachabilityMargin, 
@@ -96,6 +97,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       config_solver = config['solver']
       config_cost = config['cost']
       config_cost.N = config_solver.N
+      config_solver.COST_TYPE = config_cost.COST_TYPE
       reachability_cost = None
       if env_name=="reacher":
         reachability_cost = ReacherReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
@@ -106,7 +108,11 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       else:
         raise NotImplementedError("Other environments not implemented.")
 
-      safe_policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
+      if config_solver.COST_TYPE=='Reachability':
+        safe_policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
+      elif config_solver.COST_TYPE=='Reachavoid':
+        safe_policy = iLQRBraxReachAvoid(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
+
       # Warmup
       safe_policy.get_action(obs=state, state=state, controls=None)
       T = config_solver.MAX_ITER_RECEDING
@@ -126,6 +132,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       config_solver = config['solver']
       config_cost = config['cost']
       config_cost.N = config_solver.N
+      config_solver.COST_TYPE = config_cost.COST_TYPE
 
       reachability_cost = None
       if env_name=="reacher":
@@ -137,7 +144,10 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       else:
         raise NotImplementedError("Other environments not implemented.")
 
-      policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
+      if config_solver.COST_TYPE=='Reachability':
+        policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
+      else:
+        policy = iLQRBraxReachAvoid(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
       # Warmup
       policy.get_action(obs=state, state=state, controls=None)
       T = config_solver.MAX_ITER_RECEDING
@@ -146,6 +156,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       config_solver = config['solver']
       config_cost = config['cost']
       config_cost.N = config_solver.N
+      config_solver.COST_TYPE = config_cost.COST_TYPE
       
       if env_name=="reacher":
         reachability_cost = ReacherReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
@@ -283,8 +294,8 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
 
 if __name__ == "__main__":
     for seed in range(1):
-      for policy_type in ["ilqr_filter_with_neural_policy"]:
+      for policy_type in ["neural", "ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
-        env_name = 'barkour'
+        env_name = 'reacher'
         main(seed, env_name=env_name, policy_type=policy_type)
 

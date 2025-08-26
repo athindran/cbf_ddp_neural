@@ -5,6 +5,7 @@ cost:
   W_1: 0.01
   W_2: 0.01
   MAX_ANGULAR_VELOCITY: [5.0, 5.0]
+  MAX_TARGET_ANGULAR_VELOCITY: [5.0, 5.0]
   SMOOTHING_TEMP: 2.0
 
 solver:
