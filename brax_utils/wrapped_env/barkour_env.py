@@ -78,7 +78,7 @@ class BarkourEnv(PipelineEnv):
 
     def __init__(
         self,
-        obs_noise: float = 0.0,
+        obs_noise: float = 0.02,
         action_scale: float = 0.3,
         kick_vel: float = 0.05,
         testing: bool = True,
