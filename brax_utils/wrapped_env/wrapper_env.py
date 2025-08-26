@@ -130,6 +130,7 @@ class WrappedBraxEnv(ABC):
         control_cycle_times = save_dict['process_times']
         values = save_dict['values']
         policy_type = save_dict['policy_type']
+        cost_type = save_dict['cost_type']
         is_filter_active = save_dict['filter_active']
         is_filter_fail = save_dict['filter_failed']
         nsteps = states.shape[0]
@@ -162,8 +163,8 @@ class WrappedBraxEnv(ABC):
             fontsize=legend_fontsize)
 
 
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_q_states.png'), bbox_inches='tight')
+        fig.suptitle(f'Policy: {policy_type}, Cost: {cost_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_{cost_type}_q_states.png'), bbox_inches='tight')
         plt.close()
 
         nrows = rowdict[self.env_name]
@@ -186,8 +187,8 @@ class WrappedBraxEnv(ABC):
                         labels=[round(states[:, self.dim_q_states + idx].min(), 2), round(states[:, self.dim_q_states + idx].max(), 2)], 
                         fontsize=legend_fontsize)
 
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_qd_states.png'), bbox_inches='tight')
+        fig.suptitle(f'Policy: {policy_type}, Cost: {cost_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_{cost_type}_qd_states.png'), bbox_inches='tight')
         plt.close()
 
         rowdict = {'ant': 2, 'barkour': 3, 'reacher': 1}
@@ -216,8 +217,8 @@ class WrappedBraxEnv(ABC):
                         fontsize=legend_fontsize)
 
 
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_actions.png'), bbox_inches='tight')
+        fig.suptitle(f'Policy: {policy_type}, Cost: {cost_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_{cost_type}_actions.png'), bbox_inches='tight')
         plt.close()
 
         fig = plt.figure(figsize=(7.5, 3.5))
@@ -234,8 +235,8 @@ class WrappedBraxEnv(ABC):
                         fontsize=legend_fontsize)
         ax.set_ylabel('Control cycle time (s)', 
                         fontsize=legend_fontsize)
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_process_times.png'), bbox_inches='tight')
+        fig.suptitle(f'Policy: {policy_type}, Cost: {cost_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_{cost_type}_process_times.png'), bbox_inches='tight')
         plt.close()
 
         fig = plt.figure(figsize=(9.5, 3.5))
@@ -255,8 +256,8 @@ class WrappedBraxEnv(ABC):
                         fontsize=legend_fontsize)
         ax.set_ylabel('Value function', 
                         fontsize=legend_fontsize)
-        fig.suptitle(f'Policy: {policy_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
-        fig.savefig(os.path.join(save_folder, f'{policy_type}_values.png'), bbox_inches='tight')
+        fig.suptitle(f'Policy: {policy_type}, Cost: {cost_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_{cost_type}_values.png'), bbox_inches='tight')
         plt.close()
 
 

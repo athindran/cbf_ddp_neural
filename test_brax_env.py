@@ -19,6 +19,7 @@ from brax_utils import ( WrappedBraxEnv,
       iLQRBraxReachability, 
       iLQRBraxReachAvoid,
       iLQRBraxSafetyFilter,
+      LRBraxSafetyFilter,
       ReacherReachabilityMargin,
       AntReachabilityMargin, 
       BarkourReachabilityMargin,
@@ -181,6 +182,36 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
       prev_sol = None
       prev_ctrl = np.zeros((brax_env.dim_u, ))
       T = config_solver.MAX_ITER_RECEDING
+    elif policy_type=="lr_filter_with_neural_policy":
+      config = load_config(f'./brax_utils/configs/{env_name}.yaml')
+      config_solver = config['solver']
+      config_cost = config['cost']
+      config_cost.N = config_solver.N
+      config_solver.COST_TYPE = config_cost.COST_TYPE
+      
+      if env_name=="reacher":
+        reachability_cost = ReacherReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
+      elif env_name=="ant":
+        # NOTE: DOES NOT WORK
+        reachability_cost = AntReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
+      elif env_name=="barkour":
+        reachability_cost = BarkourReachabilityMargin(config=config_cost, env=get_brax_env(env_name, backend))
+      else:
+        raise NotImplementedError("Other environments not implemented.")
+      
+      #safe_policy = iLQRBraxReachability(id=env_name, brax_env=get_brax_env(env_name, backend), cost=reachability_cost, config=config_solver)
+      task_policy = get_neural_policy(env_name, backend)
+      brax_envs = [get_brax_env(env_name, backend), get_brax_env(env_name, backend), get_brax_env(env_name, backend), get_brax_env(env_name, backend)]
+      safety_filter =  LRBraxSafetyFilter(id=env_name, brax_envs=brax_envs, cost=reachability_cost, config=config_solver)
+
+      # Warmup
+      warmup_jit_with_task_policy_rollout(rng, state, brax_env, task_policy, safety_filter)
+      act_rng, rng = jax.random.split(rng)
+      task_ctrl, _ = task_policy(state.obs, act_rng)
+      safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_ctrl = np.zeros((brax_env.dim_u, )), warmup=True)
+      prev_sol = None
+      prev_ctrl = np.zeros((brax_env.dim_u, ))
+      T = config_solver.MAX_ITER_RECEDING
     elif policy_type=="ilqr_filter_with_ilqr_policy":
       assert env_name=="reacher"
       config = load_config(f'./brax_utils/configs/{env_name}.yaml')
@@ -236,7 +267,7 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
         act, solver_dict = policy.get_action(obs=state, state=state, controls=controls_init)
         control_cycle_times[idx] = time.time() - time0
         controls_init = jnp.asarray(solver_dict['reinit_controls'])
-      elif policy_type=="ilqr_filter_with_neural_policy":
+      elif policy_type=="ilqr_filter_with_neural_policy" or policy_type=="lr_filter_with_neural_policy":
         time0 = time.time()
         task_ctrl, _ = task_policy(state.obs, act_rng)
         act, solver_dict = safety_filter.get_action(obs=state, state=state, task_ctrl=task_ctrl, prev_sol=prev_sol, prev_ctrl=prev_ctrl)
@@ -283,18 +314,18 @@ def main(seed: int, env_name='reacher', policy_type="neural"):
     # Log results for inspection.
     render_every = 2
     camera = 'default' if env_name in ['barkour'] else None
-    media.write_video(os.path.join(save_folder, f'{policy_type}_policy.mp4'),
+    media.write_video(os.path.join(save_folder, f'{policy_type}_{config_cost.COST_TYPE}_policy.mp4'),
         brax_env.env.render(rollout[::render_every], camera=camera),
         fps=1.0 / brax_env.env.dt / render_every)
-    save_dict = {'policy_type': policy_type,  'gc_states': gc_states_sys, 
+    save_dict = {'policy_type': policy_type,  'gc_states': gc_states_sys, 'cost_type': config_cost.COST_TYPE,
                   'actions': actions_to_sys, 'process_times': control_cycle_times,
                   'values': values_sys, 'filter_active': filter_active, 'filter_failed': filter_failed}
     brax_env.plot_states_and_controls(save_dict, save_folder)
-    np.save(os.path.join(save_folder, f'{policy_type}_save_data.npy'), save_dict)
+    np.save(os.path.join(save_folder, f'{policy_type}_{config_cost.COST_TYPE}_save_data.npy'), save_dict)
 
 if __name__ == "__main__":
     for seed in range(1):
-      for policy_type in ["neural", "ilqr_filter_with_neural_policy"]:
+      for policy_type in ["lr_filter_with_neural_policy", "neural",  "ilqr_filter_with_neural_policy"]:
         print(seed, policy_type)
         env_name = 'reacher'
         main(seed, env_name=env_name, policy_type=policy_type)
