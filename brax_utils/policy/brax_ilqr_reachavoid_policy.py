@@ -15,7 +15,6 @@ class iLQRBraxReachAvoid(iLQRBrax):
       self, obs, state, controls: Optional[np.ndarray] = None, **kwargs
   ) -> np.ndarray:
     status = 0
-    self.tol = 1e-2
     self.min_alpha = 1e-12
     # `controls` include control input at timestep N-1, which is a dummy
     # control of zeros.
