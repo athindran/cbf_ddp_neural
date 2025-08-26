@@ -29,6 +29,7 @@ class iLQRBrax(BasePolicy):
         self.max_iter = config.MAX_ITER
         self.tol = 1e-3  # ILQR update tolerance.
         self.eps = getattr(config, "EPS", 1e-6)
+        self.line_search = config.LINE_SEARCH
         # Stepsize scheduler.
         self.alphas = 0.5**(np.arange(30))
 
