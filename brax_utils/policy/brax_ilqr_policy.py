@@ -27,7 +27,7 @@ class iLQRBrax(BasePolicy):
         self.dim_u = brax_env.dim_u
         self.N = config.N
         self.max_iter = config.MAX_ITER
-        self.tol = 1e-3  # ILQR update tolerance.
+        self.tol = config.TOLERANCE  # ILQR update tolerance.
         self.eps = getattr(config, "EPS", 1e-6)
         self.line_search = config.LINE_SEARCH
         # Stepsize scheduler.

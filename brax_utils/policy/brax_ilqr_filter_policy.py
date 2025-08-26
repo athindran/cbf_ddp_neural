@@ -23,6 +23,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
 
         self.filter_type = config.FILTER_TYPE
         self.constraint_type = config.CONSTRAINT_TYPE
+        self.cbf_tol = config.CBF_DDP_TOLERANCE
         if self.filter_type == 'CBF':
             self.gamma = config.CBF_GAMMA
         elif self.filter_type == 'SoftCBF':
@@ -122,7 +123,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
 
         # Setting tolerance to zero does not cause big improvements at the
         # cost of more unnecessary looping
-        cbf_tol = -1e-3
+        cbf_tol = self.cbf_tol
         # Conditioning parameter out of abundance of caution
         eps_reg = 1e-8
 
