@@ -56,6 +56,10 @@ class BarkourObstacleAvoidanceConstraintCost(BaseMargin):
 
 
 class BarkourHardConstraintCost(BaseMargin):
+    """
+    This reach-avoid constraint and target margin are temporary until we find a more rigorously constructed margin such as
+    Gameplay Filters: Robust Zero-Shot Safety through Adversarial Imagination
+    """
     def __init__(self, config, env: WrappedBraxEnv):
         super().__init__()
         self.dim_x = env.dim_x
