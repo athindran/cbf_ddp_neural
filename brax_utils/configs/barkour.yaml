@@ -1,0 +1,25 @@
+cost:
+  # Safety DDP parameters
+  COST_TYPE: Reachability
+  # SAFETY COST PARAM
+  W_ctrl: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+
+solver:
+  N: 25
+  MAX_ITER: 10
+  MAX_ITER_RECEDING: 600
+  # Line search options: 'baseline'.
+  # Baseline seems to be good enough for most cases.
+  LINE_SEARCH: 'baseline'
+  # Filter options: 'none', 'LR', 'CBF'
+  FILTER_TYPE: 'CBF'
+  CONSTRAINT_TYPE: 'linear'
+  CBF_GAMMA: 0.99
+  SOFT_CBF_GAMMA: 0.9
+  LR_THRESHOLD: 0.0
+  TOLERANCE: 0.01
+  CBF_DDP_TOLERANCE: -0.001
+  
+  #unused
+  OUT_FOLDER: exps_may/ilqr/barkour/reachability_experiment_mulobs_config1/
+
