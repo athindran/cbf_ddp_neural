@@ -84,6 +84,16 @@ class iLQRBraxReachability(iLQRBrax):
         #print(f"Converged in {i + 1} iterations with {alpha_chosen, J}")
         status = 1
         break
+    
+    # Retrieve gradients of final converged controls.
+    c_x, c_u, c_xx, c_uu, c_ux = self.cost.get_derivatives(
+        gc_states, controls
+    )
+    fx, fu = self.brax_env.get_batched_generalized_coordinates_grad(pipeline_states, controls)
+    V_x, V_xx, k_open_loop, K_closed_loop, _, _, Q_u = self.backward_pass(
+        c_x=c_x, c_u=c_u, c_xx=c_xx, c_uu=c_uu, c_ux=c_ux, fx=fx, fu=fu,
+        critical=critical
+    )
 
     t_process = time.time() - time0
     #print(f"Reachability solver took {t_process} seconds with status {status}")
