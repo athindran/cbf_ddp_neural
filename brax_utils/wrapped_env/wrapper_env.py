@@ -128,6 +128,12 @@ class WrappedBraxEnv(ABC):
         states = save_dict['gc_states']
         ctrls = save_dict['actions']
         control_cycle_times = save_dict['process_times']
+
+        if 'filter_iters' in save_dict:
+            filter_iters = save_dict['filter_iters']
+        else:
+            filter_iters = np.ones((states.shape[0],))
+
         values = save_dict['values']
         policy_type = save_dict['policy_type']
         cost_type = save_dict['cost_type']
@@ -237,6 +243,17 @@ class WrappedBraxEnv(ABC):
                         fontsize=legend_fontsize)
         fig.suptitle(f'Policy: {policy_type}, Cost: {cost_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
         fig.savefig(os.path.join(save_folder, f'{policy_type}_{cost_type}_process_times.png'), bbox_inches='tight')
+        plt.close()
+
+        fig = plt.figure(figsize=(7.5, 3.5))
+        ax = plt.gca()
+        ax.plot(range_space, filter_iters, linewidth=linewidth)
+        ax.set_xlabel('Time (s)', 
+                        fontsize=legend_fontsize)
+        ax.set_ylabel('Filter iters', 
+                        fontsize=legend_fontsize)
+        fig.suptitle(f'Policy: {policy_type}, Cost: {cost_type}, Environment: {self.env_name}', fontsize=legend_fontsize)
+        fig.savefig(os.path.join(save_folder, f'{policy_type}_{cost_type}_filter_iters.png'), bbox_inches='tight')
         plt.close()
 
         fig = plt.figure(figsize=(9.5, 3.5))

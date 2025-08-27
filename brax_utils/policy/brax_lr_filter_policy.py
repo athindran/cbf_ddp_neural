@@ -103,6 +103,7 @@ class LRBraxSafetyFilter(BasePolicy):
             solver_info_0['bootstrap_next_solution'] = solver_info_1
             solver_info_0['reinit_controls'] = jnp.asarray(
                 solver_info_1['controls'])
+            solver_info_0['num_iters'] = -1
 
             return task_ctrl_jnp.ravel(), solver_info_0
         else:
@@ -113,5 +114,6 @@ class LRBraxSafetyFilter(BasePolicy):
                 solver_info_0['controls'][:, 1:self.N])
             solver_info_0['mark_complete_filter'] = True
             safety_control = solver_info_0['controls'][:, 0]
+            solver_info_0['num_iters'] = -1
 
             return safety_control.ravel(), solver_info_0

@@ -132,7 +132,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
         scaled_c = constraint_violation
 
         # Scaling parameter
-        scaling_factor = 0.8
+        scaling_factor = 1.2
 
         # Exit loop once CBF constraint satisfied or maximum iterations
         # violated
@@ -195,6 +195,7 @@ class iLQRBraxSafetyFilter(BasePolicy):
                 self.barrier_filter_steps += 1
                 solver_info_0['mark_barrier_filter'] = True
             solver_info_0['resolve'] = False
+            solver_info_0['num_iters'] = num_iters
             solver_info_0['bootstrap_next_solution'] = solver_info_1
             solver_info_0['reinit_controls'] = jnp.asarray(
                 solver_info_1['controls'])
