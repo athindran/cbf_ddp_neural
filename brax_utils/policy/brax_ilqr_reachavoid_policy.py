@@ -3,7 +3,7 @@ import time
 import numpy as np
 import jax
 from jax import numpy as jnp
-from jaxlib.xla_extension import ArrayImpl as DeviceArray
+from jax import Array as DeviceArray
 from functools import partial
 
 from .brax_ilqr_policy import iLQRBrax
