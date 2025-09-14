@@ -130,7 +130,7 @@ class BarkourEnv(PipelineEnv):
             for f in feet_site
         ]
         assert not any(id_ == -1 for id_ in feet_site_id), 'Site not found.'
-        self._feet_site_id = np.array(feet_site_id)
+        self._feet_site_id = jp.array(feet_site_id)
         lower_leg_body = [
             'lower_leg_1to1_front_right',
             'lower_leg_1to1_front_left',
@@ -142,7 +142,7 @@ class BarkourEnv(PipelineEnv):
             for l in lower_leg_body
         ]
         assert not any(id_ == -1 for id_ in lower_leg_body_id), 'Body not found.'
-        self._lower_leg_body_id = np.array(lower_leg_body_id)
+        self._lower_leg_body_id = jp.array(lower_leg_body_id)
         self._foot_radius = 0.0175
         self._nv = sys.nv
 

@@ -1,11 +1,11 @@
 from typing import Optional, Dict
 import time
 
-from jax import numpy as jnp
+from jax import numpy as jp
+from jax import Array as DeviceArray
 from typing import List
 
 import copy
-import numpy as np
 
 from .brax_ilqr_reachability_policy import iLQRBraxReachability
 from .brax_ilqr_reachavoid_policy import iLQRBraxReachAvoid
@@ -49,19 +49,20 @@ class LRBraxSafetyFilter(BasePolicy):
                 self.id, self.config, brax_envs[3], self.cost)
 
     def get_action(
-        self, obs: np.ndarray, state:np.ndarray, 
-        task_ctrl: np.ndarray = np.array([0.0, 0.0]),
+        self, 
+        obs: DeviceArray, 
+        state: DeviceArray, 
+        task_ctrl: DeviceArray,
         prev_sol: Optional[Dict] = None, 
-        prev_ctrl: np.ndarray = np.array([0.0, 0.0]), 
+        prev_ctrl = None, 
         warmup=False,
-    ) -> np.ndarray:
+    ):
 
-        # Linear feedback policy
-        task_ctrl_jnp = jnp.asarray(task_ctrl)
+        task_ctrl_jp = jp.array(task_ctrl)
 
         # Find safe policy from step 0
         if prev_sol is not None:
-            controls_initialize = jnp.asarray(prev_sol['reinit_controls'])
+            controls_initialize = jp.array(prev_sol['reinit_controls'])
         else:
             controls_initialize = None
 
@@ -74,22 +75,22 @@ class LRBraxSafetyFilter(BasePolicy):
             solver_info_0 = prev_sol['bootstrap_next_solution']
             control_0 = solver_info_0['controls'][:, 0]
             # Closed loop solution
-            #solver_info_0['controls'] = jnp.array( solver_info_0['reinit_controls'] )
-            #solver_info_0['states'] = jnp.array( solver_info_0['reinit_states'] )
+            #solver_info_0['controls'] = jp.array( solver_info_0['reinit_controls'] )
+            #solver_info_0['states'] = jp.array( solver_info_0['reinit_states'] )
             #solver_info_0['Vopt'] = solver_info_0['Vopt_next']
             #solver_info_0['marginopt'] = solver_info_0['marginopt_next']
             #solver_info_0['is_inside_target'] = solver_info_0['is_inside_target_next']
 
-        solver_info_0['safe_opt_ctrl'] =  jnp.asarray(control_0)
-        solver_info_0['task_ctrl'] = jnp.asarray(task_ctrl)
+        solver_info_0['safe_opt_ctrl'] =  jp.array(control_0)
+        solver_info_0['task_ctrl'] = jp.array(task_ctrl)
 
         solver_info_0['mark_barrier_filter'] = False
         solver_info_0['mark_complete_filter'] = False
         # Find safe policy from step 1
         state_imaginary = self.brax_env.step(
-            state, task_ctrl_jnp
+            state, task_ctrl_jp
         )
-        boot_controls = jnp.asarray(solver_info_0['controls'])
+        boot_controls = jp.array(solver_info_0['controls'])
 
         _, solver_info_1 = self.solver_1.get_action(
             obs=state_imaginary, controls=boot_controls, state=state_imaginary)
@@ -101,15 +102,15 @@ class LRBraxSafetyFilter(BasePolicy):
             solver_info_0['mark_complete_filter'] = False
             solver_info_0['resolve'] = True
             solver_info_0['bootstrap_next_solution'] = solver_info_1
-            solver_info_0['reinit_controls'] = jnp.asarray(
+            solver_info_0['reinit_controls'] = jp.array(
                 solver_info_1['controls'])
             solver_info_0['num_iters'] = -1
 
-            return task_ctrl_jnp.ravel(), solver_info_0
+            return task_ctrl_jp.ravel(), solver_info_0
         else:
             # Safe policy
             solver_info_0['resolve'] = True
-            solver_info_0['reinit_controls'] = jnp.zeros((self.dim_u, self.N))
+            solver_info_0['reinit_controls'] = jp.zeros((self.dim_u, self.N))
             solver_info_0['reinit_controls'] = solver_info_0['reinit_controls'].at[:, 0:self.N - 1].set(
                 solver_info_0['controls'][:, 1:self.N])
             solver_info_0['mark_complete_filter'] = True
