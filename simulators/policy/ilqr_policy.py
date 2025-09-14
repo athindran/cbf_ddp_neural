@@ -1,8 +1,9 @@
 from typing import Tuple, Optional, Dict
 import time
 import copy
+import numpy as np
 import jax
-from jax import numpy as jp
+from jax import numpy as jnp
 from jax import Array as DeviceArray
 from functools import partial
 
@@ -32,27 +33,28 @@ class iLQR(BasePolicy):
         self.eps = getattr(config, "EPS", 1e-6)
         self.min_alpha = 1e-12
         # Stepsize scheduler.
-        self.alphas = 0.5**(jp.arange(30))
+        self.alphas = 0.5**(np.arange(30))
 
     def get_action(
-        self, obs: DeviceArray, controls: Optional[DeviceArray] = None,
+        self, obs: np.ndarray, controls: Optional[np.ndarray] = None,
         agents_action: Optional[Dict] = None, **kwargs
-    ) -> DeviceArray:
+    ) -> np.ndarray:
         status = 0
 
         # `controls` include control input at timestep N-1, which is a dummy
         # control of zeros.
         if controls is None:
-            controls = jp.zeros((self.dim_u, self.N))
+            controls = np.zeros((self.dim_u, self.N))
             if self.dyn.id == "PVTOL6D":
-                controls = controls.at[1, :].set(self.dyn.mass * self.dyn.g)
+                controls[1, :] = self.dyn.mass * self.dyn.g
+            controls = jnp.array(controls)
         else:
             assert controls.shape[1] == self.N
-            controls = jp.array(controls)
+            controls = jnp.array(controls)
 
         # Rolls out the nominal trajectory and gets the initial cost.
         states, controls = self.rollout_nominal(
-            jp.array(kwargs.get('state')), controls
+            jnp.array(kwargs.get('state')), controls
         )
         J = self.cost.get_traj_cost(states, controls)
 
@@ -75,7 +77,7 @@ class iLQR(BasePolicy):
 
                 if J_new <= J:  # Improved!
                     # Small improvement.
-                    if jp.abs((J - J_new) / J) < self.tol:
+                    if np.abs((J - J_new) / J) < self.tol:
                         converged = True
 
                     # Updates nominal trajectory and best cost.
@@ -96,10 +98,10 @@ class iLQR(BasePolicy):
                 break
         t_process = time.time() - time0
 
-        states = jp.asarray(states)
-        controls = jp.asarray(controls)
-        K_closed_loop = jp.asarray(K_closed_loop)
-        k_open_loop = jp.asarray(k_open_loop)
+        states = np.asarray(states)
+        controls = np.asarray(controls)
+        K_closed_loop = np.asarray(K_closed_loop)
+        k_open_loop = np.asarray(k_open_loop)
         solver_info = dict(
             states=states, controls=controls, K_closed_loop=K_closed_loop,
             k_open_loop=k_open_loop, t_process=t_process, status=status, J=J
@@ -129,7 +131,7 @@ class iLQR(BasePolicy):
         @jax.jit
         def _rollout_step(i, args):
             X, U = args
-            u_fb = jp.einsum(
+            u_fb = jnp.einsum(
                 "ik,k->i", K_closed_loop[:, :, i], (X[:, i] - nominal_states[:, i])
             )
             u = nominal_controls[:, i] + alpha * k_open_loop[:, i] + u_fb
@@ -138,13 +140,13 @@ class iLQR(BasePolicy):
             U = U.at[:, i].set(u_clip)
             return X, U
 
-        X = jp.zeros((self.dim_x, self.N))
-        U = jp.zeros((self.dim_u, self.N))  # Assumes the last ctrl are zeros.
+        X = jnp.zeros((self.dim_x, self.N))
+        U = jnp.zeros((self.dim_u, self.N))  # Assumes the last ctrl are zeros.
         X = X.at[:, 0].set(nominal_states[:, 0])
 
         X, U = jax.lax.fori_loop(0, self.N - 1, _rollout_step, (X, U))
         # Last control is only used for control cost - relevant for PVTOL with setpoint.
-        U = U.at[:, self.N - 1].set(jp.asarray(U[:, self.N - 2]))
+        U = U.at[:, self.N - 1].set(jnp.asarray(U[:, self.N - 2]))
 
         return X, U
 
@@ -161,7 +163,7 @@ class iLQR(BasePolicy):
             U = U.at[:, i].set(u_clip)
             return X, U
 
-        X = jp.zeros((self.dim_x, self.N))
+        X = jnp.zeros((self.dim_x, self.N))
         X = X.at[:, 0].set(initial_state)
         X, U = jax.lax.fori_loop(
             0, self.N - 1, _rollout_nominal_step, (X, controls)
@@ -201,7 +203,7 @@ class iLQR(BasePolicy):
             Q_ux = c_ux[:, :, n] + fu[:, :, n].T @ V_xx @ fx[:, :, n]
             Q_uu = c_uu[:, :, n] + fu[:, :, n].T @ V_xx @ fu[:, :, n]
 
-            Q_uu_inv = jp.linalg.inv(Q_uu + reg_mat)
+            Q_uu_inv = jnp.linalg.inv(Q_uu + reg_mat)
 
             Ks = Ks.at[:, :, n].set(-Q_uu_inv @ Q_ux)
             ks = ks.at[:, n].set(-Q_uu_inv @ Q_u)
@@ -218,11 +220,11 @@ class iLQR(BasePolicy):
             return V_x, V_xx, ks, Ks
 
         # Initializes.
-        Ks = jp.zeros((self.dim_u, self.dim_x, self.N - 1))
-        ks = jp.zeros((self.dim_u, self.N - 1))
+        Ks = jnp.zeros((self.dim_u, self.dim_x, self.N - 1))
+        ks = jnp.zeros((self.dim_u, self.N - 1))
         V_x = c_x[:, -1]
         V_xx = c_xx[:, :, -1]
-        reg_mat = self.eps * jp.eye(self.dim_u)
+        reg_mat = self.eps * jnp.eye(self.dim_u)
 
         V_x, V_xx, ks, Ks = jax.lax.fori_loop(
             0, self.N - 1, backward_pass_looper, (V_x, V_xx, ks, Ks)
